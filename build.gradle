@@ -1,0 +1,116 @@
+import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
+
+plugins {
+    id 'java'
+    id 'org.springframework.boot' version '3.5.6'
+    id 'io.spring.dependency-management' version '1.1.7'
+    id 'org.hidetake.ssh' version '2.11.2'   // 원격 업로드/명령 실행
+}
+
+group = 'com.che'
+version = ''                     // SNAPSHOT/버전 문자열 제거
+description = 'bongpyung'
+
+java {
+    toolchain { languageVersion = JavaLanguageVersion.of(17) }
+}
+
+repositories { mavenCentral() }
+
+configurations {
+    compileOnly { extendsFrom annotationProcessor }
+}
+
+dependencies {
+    implementation 'org.springframework.boot:spring-boot-starter-data-jdbc'
+    implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+    implementation 'org.springframework.boot:spring-boot-starter-security'
+    implementation 'org.springframework.boot:spring-boot-starter-thymeleaf'
+    implementation 'org.springframework.boot:spring-boot-starter-web'
+    implementation 'org.thymeleaf.extras:thymeleaf-extras-springsecurity6'
+
+    compileOnly 'org.projectlombok:lombok'
+    annotationProcessor 'org.projectlombok:lombok'
+
+    developmentOnly 'org.springframework.boot:spring-boot-devtools'
+    runtimeOnly 'org.postgresql:postgresql'
+
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testImplementation 'org.springframework.security:spring-security-test'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+tasks.named('test') { useJUnitPlatform() }
+
+// 산출물은 항상 한 개: build/libs/bongpyung.jar
+tasks.jar { enabled = false }
+bootJar {
+    archiveBaseName.set('bongpyung')
+    archiveVersion.set('')
+    archiveClassifier.set('')
+}
+
+//////////////////////////////////////////////////////////////
+// SSH 배포 설정 (값은 gradle.properties에서 읽어옴)
+//////////////////////////////////////////////////////////////
+ssh.settings { knownHosts = allowAnyHosts }
+
+// 프로퍼티 로드(없어도 임포트/빌드는 실패하지 않도록 함)
+def RHOST = (project.findProperty('publicHost') ?: '').toString()
+def RPORT = ((project.findProperty('publicPort') ?: '22').toString()).toInteger()
+def RUSER = (project.findProperty('publicUser') ?: 'ubuntu').toString()
+def RID   = project.findProperty('publicIdentity')      // pem 경로
+def RPASS = project.findProperty('publicPassword')      // 비밀번호(미사용 권장)
+def RDIR  = (project.findProperty('publicDir') ?: '/home/ubuntu/work/deploy/backend').toString()
+def RSVC  = (project.findProperty('systemdService') ?: 'attendance').toString()
+def TARGET_JAR = "bongpyung.jar"
+
+def HAS_AUTH = { (RPASS && !RPASS.toString().isBlank()) || (RID && !RID.toString().isBlank()) }
+
+remotes {
+    publicServer {
+        host = RHOST
+        port = RPORT
+        user = RUSER
+        if (RPASS) {
+            password = RPASS
+        } else if (RID) {
+            identity = file(RID)
+        }
+        // 인증이 없어도 여기서는 예외를 던지지 않습니다.
+    }
+}
+
+
+// 업로드만: build/libs/*.jar → {RDIR}/{파일명}_upload 로 전송
+tasks.register('scp') {
+    dependsOn tasks.bootJar          // gradlew scp만 해도 자동으로 빌드
+    outputs.upToDateWhen { false }   // 항상 실행
+
+    onlyIf {
+        if (!HAS_AUTH() || RHOST.isBlank()) {
+            logger.error("❌ 원격 접속 정보가 없습니다. gradle.properties에 publicHost/publicUser/publicIdentity 를 설정하거나 -P로 전달하세요.")
+            return false
+        }
+        true
+    }
+
+    doLast {
+        def localJar = tasks.bootJar.archiveFile.get().asFile
+        def remoteName = localJar.name + "_upload"   // 예: bongpyung.jar_upload
+
+        println "[scp] Uploading ${localJar.name} -> ${RDIR}/${remoteName}"
+
+        ssh.run {
+            session(remotes.publicServer) {
+                execute "mkdir -p ${RDIR}"
+                // 원격에 업로드 파일명을 명시
+                put from: localJar, into: "${RDIR}/${remoteName}"
+                // 확인 출력
+                execute "ls -lh ${RDIR}/${remoteName} || true"
+            }
+        }
+        println "[scp] ✅ upload only (no restart)"
+    }
+}

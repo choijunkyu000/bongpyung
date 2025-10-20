@@ -1,0 +1,137 @@
+<!-- src/main/resources/templates/home.html -->
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1"/>
+    <title>출퇴근</title>
+    <style>
+        body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; margin:0; padding:16px; }
+        h2 { margin: 6px 0 12px; }
+        .card { border:1px solid #e5e7eb; border-radius:12px; padding:16px; margin-bottom:12px; }
+        .btn { display:block; width:100%; padding:14px 16px; font-size:18px; border:0; border-radius:10px; margin:6px 0; }
+        .btn:disabled { opacity:.5 }
+        .ok { background:#16a34a; color:#fff; }
+        .out { background:#2563eb; color:#fff; }
+        .warn { color:#b91c1c; font-weight:600; }
+        small { color:#6b7280; }
+    </style>
+</head>
+<body>
+<h2>출퇴근</h2>
+<div class="card">
+    <div id="siteInfo"><small>근무지 정보를 불러오는 중...</small></div>
+    <div id="loc"><small>현재 위치를 확인하는 중...</small></div>
+    <div id="dist"></div>
+    <button id="btnIn" class="btn ok" disabled>출근</button>
+    <button id="btnOut" class="btn out" disabled>퇴근</button>
+    <div id="msg" class="warn"></div>
+</div>
+
+<script>
+    const btnIn  = document.getElementById('btnIn');
+    const btnOut = document.getElementById('btnOut');
+    const msg    = document.getElementById('msg');
+    const siteInfo = document.getElementById('siteInfo');
+    const locEl  = document.getElementById('loc');
+    const distEl = document.getElementById('dist');
+
+    let site = null;
+    let myPos = null;
+
+    function haversine(lat1, lon1, lat2, lon2) {
+        const R = 6371000;
+        const dLat = (lat2-lat1) * Math.PI/180;
+        const dLon = (lon2-lon1) * Math.PI/180;
+        const a = Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180) * Math.cos(lat2*Math.PI/180) * Math.sin(dLon/2)**2;
+        return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    }
+
+    function formatMeters(m) {
+        if (m < 1000) return Math.round(m) + ' m';
+        return (m/1000).toFixed(2) + ' km';
+    }
+
+    async function loadSite() {
+        const r = await fetch('/api/site/active');
+        const data = await r.json();
+        if (!data.ok) {
+            siteInfo.innerHTML = '<span class="warn">근무지 미설정: 관리자에게 문의하세요.</span>';
+            return;
+        }
+        site = { lat: data.lat, lng: data.lng, radiusM: data.radiusM };
+        siteInfo.innerHTML = `<small>근무지: (${site.lat.toFixed(6)}, ${site.lng.toFixed(6)}), 반경 ${site.radiusM}m</small>`;
+    }
+
+    function enableButtonsIfInside() {
+        if (!site || !myPos) return;
+        const d = haversine(myPos.lat, myPos.lng, site.lat, site.lng);
+        distEl.innerHTML = `<small>근무지와 거리: <b>${formatMeters(d)}</b></small>`;
+        const inside = d <= site.radiusM;
+        btnIn.disabled = !inside;
+        btnOut.disabled = !inside;
+        msg.textContent = inside ? '' : `반경 ${site.radiusM}m 이내에서만 출/퇴근 가능합니다.`;
+    }
+
+    async function getMyLocation() {
+        if (!navigator.geolocation) {
+            locEl.innerHTML = '<span class="warn">이 기기는 위치 권한을 지원하지 않습니다.</span>';
+            return;
+        }
+        navigator.geolocation.getCurrentPosition(
+            (pos) => {
+                myPos = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+                locEl.innerHTML = `<small>사무실 명: (${myPos.name}) 현재 위치: (${myPos.lat.toFixed(6)}, ${myPos.lng.toFixed(6)})</small>`;
+                enableButtonsIfInside();
+            },
+            (err) => {
+                locEl.innerHTML = `<span class="warn">위치 오류(${err.code}): ${err.message}</span>`;
+            },
+            { enableHighAccuracy: true, timeout: 8000, maximumAge: 0 }
+        );
+    }
+
+    async function postForm(url, params) {
+        const body = new URLSearchParams(params);
+        const r = await fetch(url, { method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body });
+        return r.json();
+    }
+
+    // ✅ 출근 버튼: 완료 시 alert 표시
+    btnIn.addEventListener('click', async () => {
+        if (!myPos) return;
+        msg.textContent = ''; // “출근 처리 중...” 제거
+        try {
+            const res = await postForm('/api/attendance/check-in', { lat: myPos.lat, lng: myPos.lng });
+            if (res.ok) {
+                alert('출근 완료!');
+            } else {
+                alert(res.message || '출근 실패');
+            }
+        } catch(e){
+            alert('서버 오류: ' + e);
+        }
+    });
+
+    // ✅ 퇴근 버튼: 완료 시 alert 표시
+    btnOut.addEventListener('click', async () => {
+        if (!myPos) return;
+        msg.textContent = ''; // “퇴근 처리 중...” 제거
+        try {
+            const res = await postForm('/api/attendance/check-out', { lat: myPos.lat, lng: myPos.lng });
+            if (res.ok) {
+                alert('퇴근 완료!');
+            } else {
+                alert(res.message || '퇴근 실패');
+            }
+        } catch(e){
+            alert('서버 오류: ' + e);
+        }
+    });
+
+    (async function init(){
+        await loadSite();   // 근무지 불러오고
+        await getMyLocation(); // 내 위치 가져오고
+    })();
+</script>
+</body>
+</html>
