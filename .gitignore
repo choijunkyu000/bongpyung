@@ -36,3 +36,9 @@ out/
 ### VS Code ###
 .vscode/
 봉평작업.txt
+/build/
+/target/
+*.log
+*.jar
+.env
+application-*.yml
