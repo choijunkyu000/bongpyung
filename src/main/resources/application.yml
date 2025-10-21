@@ -28,6 +28,10 @@ logging:
   level:
     org.hibernate.SQL: debug
     org.hibernate.type.descriptor.sql: trace
+  file:
+    name: /home/ubuntu/work/deploy/backend/log/app.log  # <- 여기를 표준으로!
+    level:
+      root: INFO
 
 # =========================================================
 # 💻 Local 환경 (IntelliJ 실행 시)

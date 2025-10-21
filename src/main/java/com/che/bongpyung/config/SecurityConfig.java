@@ -20,7 +20,7 @@ public class SecurityConfig {
         http
                 .sessionManagement(session -> session
                         .maximumSessions(1)
-                        .maxSessionsPreventsLogin(true)
+                        .maxSessionsPreventsLogin(false)
                         .expiredUrl("/login?expired")
                 )
                 .sessionManagement(session -> session
