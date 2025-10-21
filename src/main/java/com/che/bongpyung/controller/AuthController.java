@@ -31,9 +31,18 @@ public class AuthController {
         return "home";
     }
 
-    // 관리자 대시보드(메뉴: 출결관리/사용자관리 진입점)
     @GetMapping("/admin")
-    public String adminDashboard() {
+    public String adminHome() {
         return "admin/dashboard"; // templates/admin/dashboard.html
+    }
+
+    @GetMapping("/admin/attendance")
+    public String adminAttendance() {
+        return "admin/attendance"; // templates/admin/attendance.html
+    }
+
+    @GetMapping("/admin/users")
+    public String adminUsers() {
+        return "admin/users"; // templates/admin/users.html
     }
 }

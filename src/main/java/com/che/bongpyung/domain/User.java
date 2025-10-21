@@ -56,4 +56,7 @@ public class User {
     @Column(name = "last_login_at")
     private LocalDateTime lastLoginAt;
 
+    @Column(name = "use_yn")
+    private boolean useYn;
+
 }

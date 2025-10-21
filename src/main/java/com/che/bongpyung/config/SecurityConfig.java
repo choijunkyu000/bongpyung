@@ -52,7 +52,7 @@ public class SecurityConfig {
                 )
 
                 // API만 CSRF 예외
-                .csrf(csrf -> csrf.ignoringRequestMatchers("/api/**"))
+                .csrf(csrf -> csrf.ignoringRequestMatchers("/api/**", "/admin/api/**"))
 
                 // ★ GET /logout 허용 (주소창/링크로 접근 가능)
                 .logout(l -> l
