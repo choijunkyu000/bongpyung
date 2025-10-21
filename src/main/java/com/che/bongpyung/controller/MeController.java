@@ -29,7 +29,7 @@ public class MeController {
                          @RequestParam String next,
                          Model model) {
         try {
-            var u = userRepo.findByUsernameAndEnabledTrue(login.getUsername()).orElseThrow();
+            var u = userRepo.findByUserIdAndEnabledTrue(login.getUsername()).orElseThrow();
             if (!encoder.matches(current, u.getPasswordHash())) {
                 model.addAttribute("error", "현재 비밀번호가 일치하지 않습니다.");
                 return "me/password";

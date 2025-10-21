@@ -20,12 +20,12 @@ public class UserService {
     private final PasswordEncoder passwordEncoder;
 
     /** 스프링 시큐리티 인증용 */
-    public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
-        var u = userRepo.findByUsernameAndEnabledTrue(username)
+    public UserDetails loadUserByUserId(String username) throws UsernameNotFoundException {
+        var u = userRepo.findByUserIdAndEnabledTrue(username)
                 .orElseThrow(() -> new UsernameNotFoundException("user not found"));
 
         var role = "ROLE_" + u.getRole().name(); // ADMIN/USER → ROLE_ADMIN / ROLE_USER
-        return org.springframework.security.core.userdetails.User.withUsername(u.getUsername())
+        return org.springframework.security.core.userdetails.User.withUsername(u.getUserId())
                 .password(u.getPasswordHash())
                 .authorities(List.of(new SimpleGrantedAuthority(role)))
                 .disabled(!u.getEnabled())
@@ -37,11 +37,11 @@ public class UserService {
         String id = System.getenv().getOrDefault("APP_ADMIN_USERNAME", "admin");
         String raw = System.getenv().getOrDefault("APP_ADMIN_PASSWORD", "admin1234");
 
-        userRepo.findByUsernameAndEnabledTrue(id).ifPresentOrElse(
+        userRepo.findByUserIdAndEnabledTrue(id).ifPresentOrElse(
                 it -> {}, // 이미 있음
                 () -> {
                     var admin = User.builder()
-                            .username(id)
+                            .userId("ADMIN")
                             .passwordHash(passwordEncoder.encode(raw))
                             .displayName("Administrator")
                             .role(User.Role.ADMIN)
@@ -57,7 +57,7 @@ public class UserService {
 
     /** 로그인 사용자의 비밀번호 변경 */
     public void changePassword(String username, String currentRaw, String nextRaw) {
-        var u = userRepo.findByUsernameAndEnabledTrue(username).orElseThrow();
+        var u = userRepo.findByUserIdAndEnabledTrue(username).orElseThrow();
         if (!passwordEncoder.matches(currentRaw, u.getPasswordHash())) {
             throw new IllegalArgumentException("현재 비밀번호가 일치하지 않습니다.");
         }
@@ -68,8 +68,8 @@ public class UserService {
     }
 
     @Transactional
-    public void updateLoginDeviceInfo(String username, String userAgent, String ipAddress) {
-        User user = userRepo.findByUsername(username)
+    public void updateLoginDeviceInfo(String userId, String userAgent, String ipAddress) {
+        User user = userRepo.findByUserId(userId)
                 .orElseThrow(() -> new RuntimeException("User not found"));
         user.setLastLoginDevice(userAgent);
         user.setLastLoginIp(ipAddress);

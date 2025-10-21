@@ -4,12 +4,14 @@ package com.che.bongpyung.config;
 import com.che.bongpyung.domain.User;
 import com.che.bongpyung.persitence.UserRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.time.LocalDateTime;
 
+@Slf4j
 @Configuration
 @RequiredArgsConstructor
 public class DataInitializer implements CommandLineRunner {
@@ -22,19 +24,19 @@ public class DataInitializer implements CommandLineRunner {
         String adminId  = System.getenv().getOrDefault("APP_ADMIN_USERNAME", "admin");
         String adminRaw = System.getenv().getOrDefault("APP_ADMIN_PASSWORD", "admin1234");
 
-        userRepo.findByUsernameAndEnabledTrue(adminId).ifPresentOrElse(u -> {
+        userRepo.findByUserIdAndEnabledTrue(adminId).ifPresentOrElse(u -> {
             // bcrypt 아니면 교정
             if (!looksLikeBcrypt(u.getPasswordHash())) {
                 u.setPasswordHash(passwordEncoder.encode(adminRaw));
                 u.setUpdatedAt(LocalDateTime.now());
                 userRepo.save(u);
-                System.out.println("🔐 admin 비밀번호를 기본값으로 재설정했습니다.");
+                log.info("🔐 admin 비밀번호를 기본값으로 재설정했습니다.");
             } else {
-                System.out.println("✅ 관리자 계정 이미 존재함: " + adminId);
+                log.info("✅ 관리자 계정 이미 존재함: " + adminId);
             }
         }, () -> {
             var admin = User.builder()
-                    .username(adminId)
+                    .userId(adminId)
                     .passwordHash(passwordEncoder.encode(adminRaw))
                     .displayName("Administrator")
                     .role(User.Role.ADMIN)
@@ -44,7 +46,7 @@ public class DataInitializer implements CommandLineRunner {
                     .updatedAt(LocalDateTime.now())
                     .build();
             userRepo.save(admin);
-            System.out.println("✅ 관리자 계정 생성: " + adminId);
+            log.info("✅ 관리자 계정 생성: " + adminId);
         });
     }
 

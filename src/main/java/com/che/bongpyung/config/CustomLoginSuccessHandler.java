@@ -30,6 +30,6 @@ public class CustomLoginSuccessHandler implements AuthenticationSuccessHandler {
         // ✅ 로그인 기기 정보 저장
         userService.updateLoginDeviceInfo(username, userAgent, ipAddress);
 
-        response.sendRedirect("/inout"); // 로그인 성공 시 이동
+        response.sendRedirect("/home"); // 로그인 성공 시 이동
     }
 }

@@ -1,0 +1,28 @@
+<!-- fragments/header.html -->
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+</head>
+<body>
+<!-- 공통 헤더 -->
+<header th:fragment="siteHeader">
+    <div style="background:#2563eb; color:white; padding:10px;">
+        <span style="font-weight:bold;">Bongpyung Attendance</span>
+        <span style="float:right;" id="sessionStatus"></span>
+    </div>
+    <script>
+        // 세션 만료 시 처리용
+        fetch('/api/session/status')
+            .then(res => res.json())
+            .then(data => {
+                if (!data.active) {
+                    alert('다른 기기에서 로그인되어 세션이 종료되었습니다.');
+                    window.location.href = '/login?expired';
+                }
+            })
+            .catch(()=>{});
+    </script>
+</header>
+</body>
+</html>

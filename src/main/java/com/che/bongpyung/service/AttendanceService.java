@@ -1,11 +1,13 @@
+// src/main/java/com/che/bongpyung/service/AttendanceService.java
 package com.che.bongpyung.service;
 
-import com.che.bongpyung.domain.AttendanceLog;
-import com.che.bongpyung.domain.User;
+import com.che.bongpyung.domain.Attendance;
 import com.che.bongpyung.domain.OfficeSite;
+import com.che.bongpyung.domain.User;
 import com.che.bongpyung.persitence.AttendanceRepository;
 import com.che.bongpyung.persitence.OfficeSiteRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -15,10 +17,21 @@ import java.time.*;
 @RequiredArgsConstructor
 public class AttendanceService {
 
-    private final AttendanceRepository attendanceRepository;
-    private final OfficeSiteRepository officeSiteRepository;
+    private final AttendanceRepository attendanceRepository; // web.attendance
+    private final OfficeSiteRepository officeSiteRepository; // 활성 근무지
 
     private static final double EARTH_RADIUS_M = 6371000.0;
+    private static final ZoneId KST = ZoneId.of("Asia/Seoul");
+
+    // ===== 시간 유틸(KST) =====
+    private LocalDate todayKst() { return LocalDate.now(KST); }
+    private LocalDateTime nowKst() { return LocalDateTime.now(KST); }
+
+    // ===== 지오펜스/거리 =====
+    private OfficeSite activeSiteOrThrow() {
+        return officeSiteRepository.findFirstByActiveTrue()
+                .orElseThrow(() -> new IllegalStateException("활성화된 근무지가 없습니다."));
+    }
 
     /** 하버사인 거리(m) */
     private double distanceM(double lat1, double lng1, double lat2, double lng2) {
@@ -30,70 +43,85 @@ public class AttendanceService {
         return 2 * EARTH_RADIUS_M * Math.asin(Math.sqrt(a));
     }
 
-    private OfficeSite activeSiteOrThrow() {
-        return officeSiteRepository.findFirstByActiveTrue()
-                .orElseThrow(() -> new IllegalStateException("활성화된 근무지가 없습니다."));
-    }
-
-    private LocalDateTime startOfToday() {
-        return LocalDate.now().atStartOfDay();
-    }
-
-    private LocalDateTime endOfToday() {
-        return LocalDate.now().atTime(LocalTime.MAX);
-    }
-
-    /** 출근 체크 */
-    @Transactional
-    public AttendanceLog checkIn(User user, double lat, double lng, LocalDateTime now) {
-        OfficeSite site = activeSiteOrThrow();
-
+    private void assertInsideFence(double lat, double lng, OfficeSite site, String when) {
         double dist = distanceM(lat, lng, site.getLat(), site.getLng());
         if (dist > site.getRadiusM()) {
-            throw new IllegalArgumentException("출근 위치가 근무지 반경을 벗어났습니다. (" + (int) dist + "m)");
+            throw new IllegalArgumentException(when + " 위치가 근무지 반경을 벗어났습니다. (" + (int) dist + "m)");
         }
-
-        var todayStart = startOfToday();
-        var todayEnd   = endOfToday();
-
-        // 이미 오늘 출근했는지
-        var existed = attendanceRepository
-                .findTopByUserAndCheckInAtBetweenOrderByCheckInAtDesc(user, todayStart, todayEnd);
-        if (existed.isPresent()) {
-            throw new IllegalStateException("이미 출근 기록이 있습니다.");
-        }
-
-        AttendanceLog log = AttendanceLog.builder()
-                .user(user)
-                .checkInAt(now)
-                .checkInLat(lat)
-                .checkInLng(lng)
-                .build();
-
-        return attendanceRepository.save(log);
     }
 
-    /** 퇴근 체크 */
+    // ===== 핵심 로직 =====
+
+    /** 출근: 오늘 행을 INSERT (이미 있으면 예외) */
     @Transactional
-    public AttendanceLog checkOut(User user, double lat, double lng, LocalDateTime now) {
-        OfficeSite site = activeSiteOrThrow();
+    public Attendance checkIn(User user, double lat, double lng) {
+        var site = activeSiteOrThrow();
+        assertInsideFence(lat, lng, site, "출근");
 
-        var todayStart = startOfToday();
-        var todayEnd   = endOfToday();
+        var workDate = todayKst();
+        // 이미 출근했는지 사전 체크(낙관적)
+        attendanceRepository.findByUserIdAndWorkDate(user.getId(), workDate)
+                .ifPresent(a -> { throw new IllegalStateException("이미 출근 기록이 있습니다."); });
 
-        // 오늘 출근했고 아직 퇴근 안한 건
-        var log = attendanceRepository
-                .findTopByUserAndCheckInAtBetweenAndCheckOutAtIsNullOrderByCheckInAtDesc(user, todayStart, todayEnd)
+        var now = nowKst();
+        var a = new Attendance();
+        a.setUserId(user.getId());
+        a.setWorkDate(workDate);
+        a.setCheckInAt(now);
+        a.setCheckInLat(lat);
+        a.setCheckInLng(lng);
+        a.setCheckInInsideFence(true);
+        a.setCreatedAt(now);
+        a.setUpdatedAt(now);
+
+        try {
+            return attendanceRepository.save(a);
+        } catch (DataIntegrityViolationException e) {
+            // 동시 클릭 등으로 UNIQUE(user_id, work_date) 충돌 시 사용자 친화 메시지
+            throw new IllegalStateException("이미 출근 처리되었습니다. 잠시 후 새로고침 해주세요.", e);
+        }
+    }
+
+    /** 퇴근: 오늘 행 UPDATE (없으면 예외, 이미 퇴근했으면 예외) */
+    @Transactional
+    public Attendance checkOut(User user, double lat, double lng) {
+        var site = activeSiteOrThrow();
+
+        // ✅ 파라미터 이름 지정 문법 제거
+        assertInsideFence(lat, lng, site, "퇴근");
+
+        LocalDate workDate = todayKst();
+
+        // ✅ 명시 타입으로 받기 (레포지토리 제네릭이 올바르면 var도 OK지만, 안전하게)
+        Attendance a = (Attendance) attendanceRepository
+                .findByUserIdAndWorkDate(user.getId(), workDate)
                 .orElseThrow(() -> new IllegalStateException("출근 기록이 없습니다."));
 
-        double dist = distanceM(lat, lng, site.getLat(), site.getLng());
-        if (dist > site.getRadiusM()) {
-            throw new IllegalArgumentException("퇴근 위치가 근무지 반경을 벗어났습니다. (" + (int) dist + "m)");
+        if (a.getCheckOutAt() != null) {
+            throw new IllegalStateException("이미 퇴근 처리되었습니다.");
         }
 
-        log.setCheckOutAt(now);
-        log.setCheckOutLat(lat);
-        log.setCheckOutLng(lng);
-        return attendanceRepository.save(log);
+        LocalDateTime now = nowKst();
+        a.setCheckOutAt(now);
+        a.setCheckOutLat(lat);
+        a.setCheckOutLng(lng);
+        a.setCheckOutInsideFence(true);
+        a.setUpdatedAt(now);
+
+        return attendanceRepository.save(a);
     }
+
+    // ===== 조회 헬퍼(선택) =====
+
+    /** 오늘 내 상태 빠르게 조회(버튼 활성화 판단 등) */
+    @Transactional(readOnly = true)
+    public Status todayStatus(User user) {
+        var workDate = todayKst();
+        Attendance a = (Attendance) attendanceRepository.findByUserIdAndWorkDate(user.getId(), workDate).orElse(null);
+        if (a == null) return Status.NOT_CHECKED_IN;
+        if (a.getCheckOutAt() == null) return Status.WORKING;
+        return Status.CHECKED_OUT;
+    }
+
+    public enum Status { NOT_CHECKED_IN, WORKING, CHECKED_OUT }
 }

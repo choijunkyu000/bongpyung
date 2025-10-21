@@ -29,9 +29,9 @@ public class SecurityBeans {
     // ✅ UserDetailsService를 Repository로 직접 구현(어댑터 삭제)
     @Bean
     public UserDetailsService userDetailsService() {
-        return username -> userRepo.findByUsernameAndEnabledTrue(username)
+        return username -> userRepo.findByUserIdAndEnabledTrue(username)
                 .map(u -> org.springframework.security.core.userdetails.User
-                        .withUsername(u.getUsername())
+                        .withUsername(u.getUserId())
                         .password(u.getPasswordHash())
                         .authorities(List.of(new SimpleGrantedAuthority("ROLE_" + u.getRole().name())))
                         .disabled(!Boolean.TRUE.equals(u.getEnabled()))

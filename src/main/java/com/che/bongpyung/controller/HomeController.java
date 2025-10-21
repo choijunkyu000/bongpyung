@@ -57,9 +57,9 @@ public class HomeController {
             if (auth == null) {
                 return Map.of("ok", false, "message", "인증 정보가 없습니다.");
             }
-            User me = userRepo.findByUsernameAndEnabledTrue(auth.getName())
+            User me = userRepo.findByUserIdAndEnabledTrue(auth.getName())
                     .orElseThrow(() -> new IllegalStateException("사용자를 찾을 수 없습니다."));
-            var r = attendanceService.checkIn(me, lat, lng, LocalDateTime.now());
+            var r = attendanceService.checkIn(me, lat, lng);
             return Map.of("ok", true, "checkInAt", r.getCheckInAt());
         } catch (IllegalArgumentException | IllegalStateException e) {
             return Map.of("ok", false, "message", e.getMessage());
@@ -78,9 +78,9 @@ public class HomeController {
             if (auth == null) {
                 return Map.of("ok", false, "message", "인증 정보가 없습니다.");
             }
-            User me = userRepo.findByUsernameAndEnabledTrue(auth.getName())
+            User me = userRepo.findByUserIdAndEnabledTrue(auth.getName())
                     .orElseThrow(() -> new IllegalStateException("사용자를 찾을 수 없습니다."));
-            var r = attendanceService.checkOut(me, lat, lng, LocalDateTime.now());
+            var r = attendanceService.checkOut(me, lat, lng);
             return Map.of("ok", true, "checkOutAt", r.getCheckOutAt());
         } catch (IllegalArgumentException | IllegalStateException e) {
             return Map.of("ok", false, "message", e.getMessage());

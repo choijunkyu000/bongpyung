@@ -19,7 +19,7 @@ public class User {
     private Long id;
 
     @Column(nullable = false, unique = true, length = 50)
-    private String username; // 로그인 ID
+    private String userId; // 로그인 ID
 
     @Column(name = "password_hash", nullable = false, length = 255)
     private String passwordHash; // 암호화된 비밀번호
