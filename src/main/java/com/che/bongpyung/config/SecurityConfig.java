@@ -45,6 +45,8 @@ public class SecurityConfig {
                 .formLogin(form -> form
                         .loginPage("/login")
                         .loginProcessingUrl("/login")
+                        .usernameParameter("userId")     // ★ 폼 name과 일치시킴
+                        .passwordParameter("password")
                         .successHandler(customLoginSuccessHandler) // 쓰는 중이면 유지
                         //.defaultSuccessUrl("/home", true)
                         .failureUrl("/login?error=true")

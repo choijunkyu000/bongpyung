@@ -1,18 +1,22 @@
-<!-- fragments/header.html -->
+<!-- src/main/resources/templates/fragments/header.html -->
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org">
 <head>
-    <meta charset="UTF-8">
+    <meta charset="UTF-8" />
+    <link rel="stylesheet" th:href="@{/css/app.css}" />
 </head>
 <body>
 <!-- 공통 헤더 -->
-<header th:fragment="siteHeader">
-    <div style="background:#2563eb; color:white; padding:10px;">
-        <span style="font-weight:bold;">봉편면옥 출퇴근시스템</span>
-        <span style="float:right;" id="sessionStatus"></span>
+<header th:fragment="siteHeader" class="header">
+    <div class="header__wrap">
+        <span class="header__brand">봉편면옥 출퇴근시스템</span>
+        <span class="header__right">
+            <a class="logout" href="/logout">로그아웃</a>
+        </span>
     </div>
+
     <script>
-        // 세션 만료 시 처리용
+        // 세션 만료 확인
         fetch('/api/session/status')
             .then(res => res.json())
             .then(data => {
@@ -21,7 +25,7 @@
                     window.location.href = '/login?expired';
                 }
             })
-            .catch(()=>{});
+            .catch(() => {});
     </script>
 </header>
 </body>

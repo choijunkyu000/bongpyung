@@ -69,13 +69,11 @@
             <!-- CSRF -->
             <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
 
-            <label for="username">아이디</label>
-            <input id="username" name="username" type="text" inputmode="email"
-                   autocomplete="username" placeholder="아이디" required />
+            <label for="userId">아이디</label>
+            <input id="userId" name="userId" type="text" autocomplete="username" placeholder="아이디" required />
 
             <label for="password">비밀번호</label>
-            <input id="password" name="password" type="password"
-                   autocomplete="current-password" placeholder="비밀번호" required />
+            <input id="password" name="password" type="password" autocomplete="current-password" placeholder="비밀번호" required />
 
             <div class="util">
                 <!--

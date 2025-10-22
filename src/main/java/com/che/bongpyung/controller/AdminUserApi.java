@@ -93,11 +93,15 @@ public class AdminUserApi {
         return Map.of("ok", true);
     }
 
-    // (선택) 비밀번호 리셋
     @PostMapping("/{id}/reset-password")
     public Map<String, Object> resetPassword(@PathVariable Long id, @RequestBody Map<String, String> body) {
         var u = userRepo.findById(id).orElseThrow();
-        String raw = body.getOrDefault("password", "asdf1234");
+
+        String raw = body.getOrDefault("password", "").trim();
+        if (raw.isBlank()) {                 // ★ 빈값/공백이면 기본값
+            raw = "asdf1234";
+        }
+
         u.setPasswordHash(passwordEncoder.encode(raw));
         u.setFirstLogin(true);
         u.setUpdatedAt(LocalDateTime.now());

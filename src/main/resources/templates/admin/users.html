@@ -6,100 +6,48 @@
     <meta name="_csrf" th:content="${_csrf.token}"/>
     <meta name="_csrf_header" th:content="${_csrf.headerName}"/>
     <title>사용자관리</title>
-    <style>
-        :root{ --bg:#f8fafc; --card:#fff; --border:#e5e7eb; --text:#111827; --muted:#6b7280; --primary:#2563eb; --danger:#b91c1c; }
-        @media (prefers-color-scheme: dark){
-            :root{ --bg:#0b1220; --card:#0f172a; --border:#1f2a44; --text:#e5e7eb; --muted:#94a3b8; --primary:#3b82f6; --danger:#ef4444; }
-        }
-        *{box-sizing:border-box}
-        body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,Segoe UI,Roboto,Noto Sans KR,sans-serif;padding:16px}
-        header{
-            background:var(--primary); color:#fff; padding:14px 16px; border-radius:14px;
-            position:sticky; top:0; z-index:10; margin:10px 0 14px;
-        }
-        .h-row{ display:flex; align-items:center; justify-content:space-between; gap:10px; }
-        .brand{ font-weight:700; }
-        h1{margin:0 0 12px;font-size:20px}
-        .card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px;margin-bottom:12px}
-        input,select,button{padding:12px;border:1px solid var(--border);border-radius:10px;font-size:16px;background:var(--card);color:var(--text);width:100%}
-        button.primary{background:var(--primary);color:#fff;border:none}
-        button.danger{background:var(--danger);color:#fff;border:none}
-        .muted{color:var(--muted);font-size:12px}
-
-        /* 폼: 한 줄에 한 칸씩 */
-        .form-grid{display:grid;grid-template-columns:1fr;gap:10px}
-        .form-grid .row-actions{display:flex;gap:8px}
-        @media (min-width: 760px){
-            .form-grid{grid-template-columns:repeat(2,1fr)}
-            .form-grid .full{grid-column:1 / -1}
-            .form-grid .row-actions{justify-content:flex-end}
-        }
-
-        /* 리스트: 데스크탑은 표, 모바일은 카드 */
-        table{width:100%;border-collapse:collapse;font-size:14px}
-        th,td{padding:10px;border-bottom:1px solid var(--border);vertical-align:middle}
-        th{color:var(--muted);font-size:12px;text-align:left}
-
-        /* 카드형(모바일) */
-        @media (max-width: 760px){
-            table thead{display:none}
-            table, tbody, tr, td{display:block;width:100%}
-            tbody tr{border:1px solid var(--border);border-radius:12px;padding:10px;margin-bottom:10px;background:var(--card)}
-            tbody tr td{border:none;padding:6px 0}
-            tbody tr td[data-th]::before{
-                content: attr(data-th) " ";
-                display:block;
-                font-size:12px;
-                color:var(--muted);
-                margin-bottom:4px;
-            }
-            .td-actions{display:flex;gap:8px}
-        }
-
-        /* 버튼 크기 최적화 */
-        .btn-sm{padding:10px 12px;font-size:14px}
-        .w-auto{width:auto}
-    </style>
+    <link rel="stylesheet" th:href="@{/css/app.css}">
 </head>
-<body>
-<header>
-    <div class="h-row">
+
+<body class="container">
+<header class="header">
+    <div class="header__row">
         <div>
-            <div class="brand">Bongpyung Admin</div>
+            <div class="header__brand">Bongpyung Admin</div>
             <div class="user" th:text="${#authentication?.name}">admin</div>
         </div>
-        <a class="logout" href="/logout" style="color:#fff;text-decoration:underline">로그아웃</a>
+        <a class="header__link" href="/logout">로그아웃</a>
     </div>
 </header>
 
 <h1>사용자관리</h1>
 
-<!-- 등록 폼 (모바일: 한 줄 한 칸) -->
-<div class="card">
+<!-- 등록 폼 -->
+<div class="card card--tight">
     <div class="form-grid">
-        <input id="f-userId" placeholder="아이디" class="full"/>
-        <input id="f-displayName" placeholder="이름" class="full"/>
-        <select id="f-role" class="full">
-            <option value="USER">USER(일반 사용자)</option>
+        <input id="f-userId" placeholder="아이디" class="input full"/>
+        <input id="f-displayName" placeholder="이름" class="input full"/>
+        <select id="f-role" class="input full">
+            <option value="USER">USER (일반 사용자)</option>
             <option value="ADMIN">ADMIN (관리자)</option>
         </select>
-        <input id="f-tempPass" placeholder="임시 비밀번호" class="full"/>
-        <div class="row-actions full">
-            <button class="primary w-auto btn-sm" id="btnCreate">등록</button>
-            <button class="w-auto btn-sm" id="btnReload">새로고침</button>
-            <label class="w-auto btn-sm" style="border:none;padding:0;background:transparent">
-                <input type="checkbox" id="f-includeInactive" style="width:auto;margin-right:6px"/> 비활성 포함
+        <input id="f-tempPass" placeholder="임시 비밀번호 (기본 asdf1234)" class="input full"/>
+        <div class="form-actions full">
+            <button class="btn btn--primary btn--sm" id="btnCreate">등록</button>
+            <button class="btn btn--sm" id="btnReload">새로고침</button>
+            <label class="chk" style="display:flex;align-items:center;gap:6px;">
+                <input type="checkbox" id="f-includeInactive" style="width:auto;"/> 비활성 포함
             </label>
         </div>
     </div>
-    <div class="muted" style="margin-top:6px">등록 시 계정은 활성(use_yn=true)되고, 첫 로그인에 비밀번호 변경을 유도합니다.</div>
+    <div class="muted" style="margin-top:8px">등록 시 계정은 활성화되고, 첫 로그인에 비밀번호 변경을 유도합니다.</div>
     <div id="msg" class="muted"></div>
 </div>
 
-<!-- 목록/검색 -->
-<div class="card">
+<!-- 목록 -->
+<div class="card card--tight">
     <div id="listWrap" style="overflow-x:auto;">
-        <table>
+        <table class="table">
             <thead>
             <tr>
                 <th>이름</th>
@@ -149,73 +97,50 @@
 
         for(const row of data.rows){
             const tr = document.createElement('tr');
-
-            // 이름
-            tr.appendChild(
-                cell('이름', `<input data-id="${row.id}" data-k="displayName" value="${row.displayName??''}" />`)
-            );
-            // 아이디 (username)
-            tr.appendChild(
-                cell('아이디', `<div class="muted">${row.userId}</div>`)
-            );
-            // 역할
-            tr.appendChild(
-                cell('역할', `
-          <select data-id="${row.id}" data-k="role">
-            <option value="USER" ${row.role==='USER'?'selected':''}>USER (일반유저)</option>
-            <option value="ADMIN" ${row.role==='ADMIN'?'selected':''}>ADMIN (관리자)</option>
-          </select>
-        `)
-            );
-            // 활성
-            tr.appendChild(
-                cell('활성', `
-          <select data-id="${row.id}" data-k="useYn">
-            <option value="true" ${row.useYn?'selected':''}>활성</option>
-            <option value="false" ${!row.useYn?'selected':''}>비활성</option>
-          </select>
-        `)
-            );
-            // 작업
-            tr.appendChild(
-                cell('작업', `
-          <div class="td-actions">
-            <button data-act="save" data-id="${row.id}" class="primary btn-sm">저장</button>
-            <button data-act="delete" data-id="${row.id}" class="danger btn-sm">삭제</button>
-            <button data-act="reset" data-id="${row.id}" class="btn-sm">비번초기화</button>
-          </div>
-        `)
-            );
+            tr.appendChild(cell('이름', `<input data-id="${row.id}" data-k="displayName" class="input" value="${row.displayName??''}" />`));
+            tr.appendChild(cell('아이디', `<div class="muted">${row.userId}</div>`));
+            tr.appendChild(cell('역할', `
+        <select data-id="${row.id}" data-k="role" class="input">
+          <option value="USER" ${row.role==='USER'?'selected':''}>USER</option>
+          <option value="ADMIN" ${row.role==='ADMIN'?'selected':''}>ADMIN</option>
+        </select>
+      `));
+            tr.appendChild(cell('활성', `
+        <select data-id="${row.id}" data-k="useYn" class="input">
+          <option value="true" ${row.useYn?'selected':''}>활성</option>
+          <option value="false" ${!row.useYn?'selected':''}>비활성</option>
+        </select>
+      `));
+            tr.appendChild(cell('작업', `
+        <div class="td-actions">
+          <button data-act="save" data-id="${row.id}" class="btn btn--primary btn--sm">저장</button>
+          <button data-act="delete" data-id="${row.id}" class="btn btn--danger btn--sm">삭제</button>
+          <button data-act="reset" data-id="${row.id}" class="btn btn--sm">비번초기화</button>
+        </div>
+      `));
             tbody.appendChild(tr);
         }
     }
 
     document.getElementById('btnReload').addEventListener('click', load);
-
     document.getElementById('btnCreate').addEventListener('click', async () => {
-        const userId = fUser.value.trim();
-        const displayName = fName.value.trim();
-        const role = fRole.value;
-        const tempPassword = fPass.value.trim();
+        const userId = fUser.value.trim(), displayName = fName.value.trim(),
+            role = fRole.value, tempPassword = fPass.value.trim();
         if(!userId || !displayName){ msg.textContent='아이디/이름은 필수입니다.'; return; }
-
-        // 백엔드 CreateUserReq가 username을 받으므로 매핑
-        const res = await api('POST','/admin/api/users',{ userId: userId, displayName, role, tempPassword });
-        if(res.ok){ fUser.value=''; fName.value=''; fPass.value=''; alert('사용자 등록 완료'); load(); }
+        const res = await api('POST','/admin/api/users',{ userId, displayName, role, tempPassword });
+        if(res.ok){ fUser.value=''; fName.value=''; fPass.value=''; alert('등록 완료'); load(); }
         else{ alert(res.message || '등록 실패'); }
     });
 
     tbody.addEventListener('click', async (e) => {
         const btn = e.target.closest('button'); if(!btn) return;
-        const id = btn.dataset.id;
-        const act = btn.dataset.act;
+        const id = btn.dataset.id, act = btn.dataset.act;
 
         if(act === 'save'){
             const rowEl = btn.closest('tr');
             const payload = {};
             rowEl.querySelectorAll('input[data-k],select[data-k]').forEach(el => {
-                const k = el.dataset.k;
-                let v = el.value;
+                const k = el.dataset.k; let v = el.value;
                 if(k==='useYn') v = (v === 'true');
                 payload[k] = v;
             });
@@ -225,16 +150,19 @@
         }
 
         if(act === 'delete'){
-            if(!confirm('정말 삭제(비활성)하시겠습니까?')) return;
+            if(!confirm('정말 비활성 처리하시겠습니까?')) return;
             const res = await api('DELETE', `/admin/api/users/${id}`);
             if(res.ok){ load(); } else { alert(res.message || '삭제 실패'); }
         }
 
-        if(act === 'reset'){
-            const pw = prompt('새 임시 비밀번호를 입력하세요 (기본: asdf1234)', '');
-            const res = await api('POST', `/admin/api/users/${id}/reset-password`, { password: pw||'' });
-            if(res.ok){ alert('임시 비밀번호가 설정되었습니다.'); }
-            else{ alert(res.message || '초기화 실패'); }
+        if (act === 'reset') {
+            let pw = prompt('새 임시 비밀번호를 입력하세요 (미입력 시 기본: asdf1234)', '');
+            if (pw === null) return;
+            pw = (pw || '').trim();
+            const body = pw ? { password: pw } : {};
+            const res = await api('POST', `/admin/api/users/${id}/reset-password`, body);
+            if (res.ok) { alert(`임시 비밀번호가 설정되었습니다.${pw ? '' : ' (기본 asdf1234)'}`); }
+            else { alert(res.message || '초기화 실패'); }
         }
     });
 
