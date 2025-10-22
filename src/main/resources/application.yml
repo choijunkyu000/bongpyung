@@ -28,6 +28,8 @@ logging:
   level:
     org.hibernate.SQL: debug
     org.hibernate.type.descriptor.sql: trace
+  pattern:
+    console: '%d{yyyy-MM-dd HH:mm:ss.SSS,Asia/Seoul} [%thread] %-5level %logger{36} - %msg%n'
   file:
     name: /home/ubuntu/work/deploy/backend/log/app.log  # <- 여기를 표준으로!
     level:
@@ -43,7 +45,7 @@ spring:
       on-profile: local
 
   datasource:
-    url: jdbc:postgresql://ec2-52-78-234-30.ap-northeast-2.compute.amazonaws.com:5432/attendance
+    url: jdbc:postgresql://ec2-52-78-234-30.ap-northeast-2.compute.amazonaws.com:5432/attendance?currentSchema=web&options=-c%20TimeZone=Asia/Seoul
     username: attendance
     password: "qhdvud2025@)@%"
     driver-class-name: org.postgresql.Driver
@@ -58,7 +60,7 @@ spring:
       on-profile: prod
 
   datasource:
-    url: jdbc:postgresql://localhost:5432/attendance
+    url: jdbc:postgresql://localhost:5432/attendance?currentSchema=web&options=-c%20TimeZone=Asia/Seoul
     username: attendance
     password: "qhdvud2025@)@%"
     driver-class-name: org.postgresql.Driver

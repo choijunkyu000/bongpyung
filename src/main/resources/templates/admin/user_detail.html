@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1"/>
+    <meta name="_csrf" th:content="${_csrf.token}"/>
+    <meta name="_csrf_header" th:content="${_csrf.headerName}"/>
+    <title>사용자 상세</title>
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+</head>
+<body class="container">
+
+<div th:replace="fragments/header :: siteHeader"></div>
+
+<h1>사용자 상세</h1>
+
+<div class="card card--tight">
+    <div class="form-grid">
+        <input id="f-userId" class="input full" placeholder="아이디" readonly />
+        <input id="f-displayName" class="input full" placeholder="이름"/>
+        <select id="f-role" class="input full">
+            <option value="USER">USER (일반 사용자)</option>
+            <option value="ADMIN">ADMIN (관리자)</option>
+        </select>
+        <select id="f-useYn" class="input full">
+            <option value="true">활성</option>
+            <option value="false">비활성</option>
+        </select>
+
+        <div class="form-actions full">
+            <button id="btnSave" class="btn btn--primary btn--sm">저장</button>
+            <button id="btnResetPw" class="btn btn--danger btn--sm">비번 초기화</button>
+            <a href="/admin/users" class="btn btn--sm">목록으로</a>
+        </div>
+    </div>
+    <div id="msg" class="muted"></div>
+</div>
+
+<div class="card">
+    <h2>오늘의 근태</h2>
+    <div class="form-grid">
+        <input id="f-date" class="input" type="date"/>
+        <button id="btnLoadAttendance" class="btn btn--sm btn--primary">조회</button>
+    </div>
+
+    <div style="margin-top:10px">
+        <div class="muted">선택일 기준 최근 기록</div>
+        <table class="table" style="margin-top:6px">
+            <thead>
+            <tr>
+                <th>날짜</th>
+                <th>출근 시간</th>
+                <th>퇴근 시간</th>
+            </tr>
+            </thead>
+            <tbody id="tbody-att">
+            <tr><td data-th="날짜">-</td><td data-th="출근">-</td><td data-th="퇴근">-</td></tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+    const userIdFromPath = window.location.pathname.split('/').pop(); // /admin/users/{id}
+    const fUserId = document.getElementById('f-userId');
+    const fName   = document.getElementById('f-displayName');
+    const fRole   = document.getElementById('f-role');
+    const fUseYn  = document.getElementById('f-useYn');
+    const fDate   = document.getElementById('f-date');
+    const tbodyAtt = document.getElementById('tbody-att');
+    const msg     = document.getElementById('msg');
+
+    // 기본 날짜 = 오늘
+    const today = new Date().toISOString().split('T')[0];
+    fDate.value = today;
+
+    async function api(method, url, body){
+        const token  = document.querySelector('meta[name="_csrf"]')?.content;
+        const header = document.querySelector('meta[name="_csrf_header"]')?.content || 'X-CSRF-TOKEN';
+        const opt = { method, headers: { 'Content-Type': 'application/json' } };
+        if (token) opt.headers[header] = token;
+        if (body) opt.body = JSON.stringify(body);
+        const r = await fetch(url, opt);
+        if (!r.ok) throw new Error(r.status + ' ' + r.statusText);
+        return r.json();
+    }
+
+    function setAttendanceRow(date, inAt, outAt){
+        tbodyAtt.innerHTML = '';
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+      <td data-th="날짜">${date || '-'}</td>
+      <td data-th="출근">${inAt || '-'}</td>
+      <td data-th="퇴근">${outAt || '-'}</td>
+    `;
+        tbodyAtt.appendChild(tr);
+    }
+
+    async function loadDetail(){
+        const date = fDate.value;
+        const data = await api('GET', `/admin/api/users/${userIdFromPath}?date=${date}`);
+        if(!data.ok){ msg.textContent = data.message || '로드 실패'; return; }
+
+        const u = data.user;
+        fUserId.value = u.userId;
+        fName.value   = u.displayName || '';
+        fRole.value   = u.role || 'USER';
+        fUseYn.value  = String(!!u.useYn);
+
+        const att = data.attendance || {};
+        setAttendanceRow(att.workDate || date, att.checkInAt, att.checkOutAt);
+    }
+
+    // 저장
+    document.getElementById('btnSave').addEventListener('click', async () => {
+        const payload = {
+            displayName: fName.value.trim(),
+            role: fRole.value,
+            useYn: (fUseYn.value === 'true')
+        };
+        const res = await api('PUT', `/admin/api/users/${userIdFromPath}`, payload);
+        if (res.ok) { alert('저장되었습니다.'); await loadDetail(); }
+        else { alert(res.message || '저장 실패'); }
+    });
+
+    // 비번 초기화
+    document.getElementById('btnResetPw').addEventListener('click', async () => {
+        let pw = prompt('새 임시 비밀번호를 입력하세요 (미입력 시 기본: asdf1234)', '');
+        if (pw === null) return;
+        pw = (pw || '').trim();
+        const body = pw ? { password: pw } : {};
+        const res = await api('POST', `/admin/api/users/${userIdFromPath}/reset-password`, body);
+        if (res.ok) { alert(`임시 비밀번호가 설정되었습니다.${pw ? '' : ' (기본 asdf1234)'}`); }
+        else { alert(res.message || '초기화 실패'); }
+    });
+
+    // 날짜 변경/조회
+    document.getElementById('btnLoadAttendance').addEventListener('click', loadDetail);
+
+    // 최초 로드
+    loadDetail();
+</script>
+
+</body>
+</html>

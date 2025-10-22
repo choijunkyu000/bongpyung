@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <configuration scan="true">
-
+    <springProperty name="LOG_PATTERN" source="logging.pattern.console" default="%d{yyyy-MM-dd HH:mm:ss.SSS,Asia/Seoul} [%thread] %-5level %logger{36} - %msg%n"/>
     <!-- LOG_DIR은 환경변수/프로퍼티로 주입, 기본값은 현재 작업디렉토리의 log -->
     <property name="LOG_DIR" value="${LOG_DIR:-log}"/>
     <property name="APP_NAME" value="bongpyung"/>
@@ -8,7 +8,7 @@
     <!-- 콘솔 -->
     <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
         <encoder>
-            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n</pattern>
+            <pattern>${LOG_PATTERN}</pattern>
         </encoder>
     </appender>
 
@@ -16,7 +16,7 @@
     <appender name="APP_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
         <file>${LOG_DIR}/app.log</file>
         <encoder>
-            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n</pattern>
+            <pattern>${LOG_PATTERN}</pattern>
         </encoder>
         <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
             <!-- 일별 + 인덱스 -->
