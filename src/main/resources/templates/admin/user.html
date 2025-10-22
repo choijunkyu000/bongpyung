@@ -1,0 +1,91 @@
+<!-- src/main/resources/templates/admin/user.html -->
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1"/>
+    <title>신규 사용자 생성</title>
+    <link rel="stylesheet" th:href="@{/css/app.css}"/>
+    <!-- CSRF -->
+    <meta name="_csrf" th:content="${_csrf.token}"/>
+    <meta name="_csrf_header" th:content="${_csrf.headerName}"/>
+</head>
+<body class="container">
+
+<!-- 공통 헤더 -->
+<div th:replace="fragments/header :: siteHeader"></div>
+
+<h1>신규 사용자 생성</h1>
+
+<div class="card card--tight">
+    <div class="form-grid">
+        <label class="full">아이디
+            <input id="f-userId" class="input" placeholder="영문/숫자 조합 권장" autocomplete="off"/>
+        </label>
+        <label class="full">이름
+            <input id="f-displayName" class="input" placeholder="표시 이름" autocomplete="off"/>
+        </label>
+        <label class="full">권한
+            <select id="f-role" class="input">
+                <option value="USER">USER (일반)</option>
+                <option value="ADMIN">ADMIN (관리자)</option>
+            </select>
+        </label>
+        <label class="full">임시 비밀번호 (선택, 미입력 시 기본 asdf1234)
+            <input id="f-tempPass" class="input" type="text" autocomplete="new-password"/>
+        </label>
+
+        <div class="form-actions full">
+            <button id="btnSave" class="btn btn--primary">저장</button>
+            <a href="/admin/dashboard" class="btn">취소</a>
+        </div>
+
+        <div id="msg" class="alert alert--info full"></div>
+    </div>
+</div>
+
+<script>
+    const $ = (sel) => document.querySelector(sel);
+    const msg = $('#msg');
+
+    async function apiCreateUser(payload){
+        const token  = document.querySelector('meta[name="_csrf"]')?.content;
+        const header = document.querySelector('meta[name="_csrf_header"]')?.content || 'X-CSRF-TOKEN';
+        const opt = {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+        };
+        if (token) opt.headers[header] = token;
+        opt.body = JSON.stringify(payload);
+        const r = await fetch('/admin/api/users', opt);
+        if (!r.ok) throw new Error(r.status + ' ' + r.statusText);
+        return r.json();
+    }
+
+    $('#btnSave').addEventListener('click', async () => {
+        const userId = $('#f-userId').value.trim();
+        const displayName = $('#f-displayName').value.trim();
+        const role = $('#f-role').value;
+        const tempPassword = $('#f-tempPass').value.trim();
+
+        if (!userId || !displayName){
+            msg.textContent = '아이디와 이름은 필수입니다.'; msg.className='alert alert--error'; return;
+        }
+
+        try{
+            const res = await apiCreateUser({ userId, displayName, role, tempPassword });
+            if (res.ok){
+                alert('저장되었습니다.');
+                window.location.href = '/admin/dashboard';
+            }else{
+                msg.textContent = res.message || '등록 실패';
+                msg.className = 'alert alert--error';
+            }
+        }catch(e){
+            msg.textContent = '서버 오류: ' + e.message;
+            msg.className = 'alert alert--error';
+        }
+    });
+</script>
+</body>
+</html>

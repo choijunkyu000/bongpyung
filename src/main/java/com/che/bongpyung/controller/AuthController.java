@@ -31,7 +31,7 @@ public class AuthController {
         return "home";
     }
 
-    @GetMapping("/admin")
+    @GetMapping("/admin/dashboard")
     public String adminHome() {
         return "admin/dashboard"; // templates/admin/dashboard.html
     }
@@ -59,5 +59,10 @@ public class AuthController {
     @GetMapping("/admin/attendance_detail")
     public String adminUserAttendanceDetail() {
         return "admin/user_attendance_detail"; // templates/admin/users.html
+    }
+
+    @GetMapping("/admin/users/new")
+    public String viewCreateUserPage() {
+        return "admin/user"; // 위에서 만든 템플릿
     }
 }

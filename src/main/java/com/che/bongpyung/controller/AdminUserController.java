@@ -11,6 +11,7 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -22,6 +23,7 @@ public class AdminUserController {
 
     private final UserRepository userRepo;
     private final AttendanceRepository attendanceRepo;
+    private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd");
 
     // ==== Pages ====
 
@@ -48,42 +50,46 @@ public class AdminUserController {
             @RequestParam(required = false) String displayName,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date
     ) {
-        LocalDate target = (date != null) ? date : LocalDate.now();
+        LocalDate targetDate = (date != null) ? date : LocalDate.now();
 
+        // --- 기본 유저 목록 필터링 (DB 전체 조회 후 필터)
         List<User> users = userRepo.findAll().stream()
-                .filter(u -> userId == null || userId.isBlank() ||
-                        (u.getUserId() != null && u.getUserId().toLowerCase().contains(userId.toLowerCase())))
+                .filter(u -> userId == null || userId.isBlank() || u.getUserId().toLowerCase().contains(userId.toLowerCase()))
                 .filter(u -> displayName == null || displayName.isBlank() ||
                         (u.getDisplayName() != null && u.getDisplayName().contains(displayName)))
                 .sorted(Comparator.comparing(User::getId))
                 .collect(Collectors.toList());
 
-        List<Long> ids = users.stream().map(User::getId).collect(Collectors.toList());
-        Map<Long, Attendance> attMap = attendanceRepo.findByUserIdInAndWorkDate(ids, target).stream()
-                .collect(Collectors.toMap(Attendance::getUserId, a -> a));
+        // --- Attendance 조건 조회 (date 조건이 있을 때만)
+        Map<Long, Attendance> attMap = new HashMap<>();
+        if (targetDate != null) {
+            List<Long> ids = users.stream().map(User::getId).toList();
+            List<Attendance> atts = (List<Attendance>) attendanceRepo.findByUserIdInAndWorkDate(ids, targetDate);
+            for (Attendance a : atts) {
+                attMap.put(a.getUserId(), a);
+            }
+        }
 
+        // --- 응답 변환
+        DateTimeFormatter df = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
         List<Map<String, Object>> rows = new ArrayList<>();
         for (User u : users) {
             Attendance a = attMap.get(u.getId());
-
-            Map<String, Object> row = new HashMap<>();
-            row.put("id", u.getId());                                // null 허용됨
-            row.put("userId", u.getUserId());                        // null 허용됨
-            row.put("displayName", u.getDisplayName());              // null 허용됨
-            row.put("role", (u.getRole() != null) ? u.getRole().name() : null);
-            row.put("useYn", Boolean.valueOf(u.isUseYn()));          // boolean → Boolean 박싱
-            row.put("lastCheckIn", (a != null) ? a.getCheckInAt() : null);
-            row.put("lastCheckOut", (a != null) ? a.getCheckOutAt() : null);
-
-            rows.add(row);
+            Map<String, Object> map = new HashMap<>();
+            map.put("id", u.getId());
+            map.put("userId", u.getUserId());
+            map.put("displayName", u.getDisplayName());
+            map.put("role", u.getRole().name());
+            map.put("useYn", u.isUseYn());
+            map.put("lastCheckIn", a != null && a.getCheckInAt() != null ? a.getCheckInAt().format(df) : null);
+            map.put("lastCheckOut", a != null && a.getCheckOutAt() != null ? a.getCheckOutAt().format(df) : null);
+            map.put("createdAt", u.getCreatedAt() != null ? u.getCreatedAt().format(DateTimeFormatter.ofPattern("yyyy-MM-dd")) : null);
+            map.put("updatedAt", u.getUpdatedAt() != null ? u.getUpdatedAt().format(DateTimeFormatter.ofPattern("yyyy-MM-dd")) : null);
+            rows.add(map);
         }
 
-        Map<String, Object> response = new HashMap<>();
-        response.put("ok", Boolean.TRUE);
-        response.put("rows", rows);
-        return response;
+        return Map.of("ok", true, "rows", rows);
     }
-
 
     /** 상세 조회 + 선택일 근태 */
     @ResponseBody

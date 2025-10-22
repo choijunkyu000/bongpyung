@@ -2,29 +2,26 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org">
 <head>
-    <meta charset="UTF-8" />
-    <link rel="stylesheet" th:href="@{/css/app.css}" />
+    <meta charset="UTF-8">
+    <link rel="stylesheet" th:href="@{/css/app.css}">
 </head>
 <body>
-<!-- 공통 헤더 -->
-<header th:fragment="siteHeader" class="header">
-    <div class="header__wrap">
-        <span class="header__brand">봉편면옥 출퇴근시스템</span>
-        <span class="header__right">
-            <a class="logout" href="/logout">로그아웃</a>
-        </span>
+<header th:fragment="siteHeader">
+    <div class="header">
+        <div class="header__row">
+            <div class="header__brand">봉편면옥 출퇴근시스템</div>
+            <nav style="display:flex; gap:12px; align-items:center;">
+                <a class="header__link" th:href="@{/account/password}">비밀번호 변경</a>
+                <a class="header__link" th:href="@{/logout}">로그아웃</a>
+            </nav>
+        </div>
     </div>
 
     <script>
-        // 세션 만료 확인
+        // 세션 만료 시 처리(선택)
         fetch('/api/session/status')
-            .then(res => res.json())
-            .then(data => {
-                if (!data.active) {
-                    alert('다른 기기에서 로그인되어 세션이 종료되었습니다.');
-                    window.location.href = '/login?expired';
-                }
-            })
+            .then(r => r.ok ? r.json() : {active:true})
+            .then(d => { if (d && d.active === false) location.href = '/login?expired'; })
             .catch(() => {});
     </script>
 </header>

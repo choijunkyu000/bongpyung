@@ -1,5 +1,6 @@
 package com.che.bongpyung.config;
 
+import com.che.bongpyung.persitence.UserRepository;
 import com.che.bongpyung.service.UserService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -12,24 +13,27 @@ import java.io.IOException;
 @Component
 public class CustomLoginSuccessHandler implements AuthenticationSuccessHandler {
 
-    private final UserService userService;
+    private final UserRepository userRepo;
 
-    public CustomLoginSuccessHandler(UserService userService) {
-        this.userService = userService;
+    public CustomLoginSuccessHandler(UserRepository userRepo) {
+        this.userRepo = userRepo;
     }
 
     @Override
-    public void onAuthenticationSuccess(HttpServletRequest request,
-                                        HttpServletResponse response,
+    public void onAuthenticationSuccess(HttpServletRequest request, HttpServletResponse response,
                                         Authentication authentication) throws IOException {
+        String userId = authentication.getName();
+        var user = userRepo.findByUserIdAndEnabledTrue(userId).orElse(null);
+        if (user != null && Boolean.TRUE.equals(user.getFirstLogin())) {
+            response.sendRedirect("/account/password");
+            return;
+        }
 
-        String username = authentication.getName();
-        String userAgent = request.getHeader("User-Agent");
-        String ipAddress = request.getRemoteAddr();
-
-        // ✅ 로그인 기기 정보 저장
-        userService.updateLoginDeviceInfo(username, userAgent, ipAddress);
-
-        response.sendRedirect("/home"); // 로그인 성공 시 이동
+        // ✅ 권한별 대시보드 이동
+        if (user.getRole() == com.che.bongpyung.domain.User.Role.ADMIN) {
+            response.sendRedirect("/admin/dashboard");
+        } else {
+            response.sendRedirect("/home");
+        }
     }
 }
