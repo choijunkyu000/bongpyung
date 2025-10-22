@@ -1,11 +1,10 @@
-// src/main/java/com/che/bongpyung/domain/Attendance.java
 package com.che.bongpyung.domain;
 
 import jakarta.persistence.*;
 import lombok.*;
 
 import java.time.LocalDate;
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.time.ZoneId;
 
 @Getter
@@ -27,11 +26,13 @@ import java.time.ZoneId;
 )
 public class Attendance {
 
+    private static final ZoneId KST = ZoneId.of("Asia/Seoul");
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    /** FK(web.users.id) — 간단히 id만 보유 (필요 시 @ManyToOne로 교체 가능) */
+    /** FK(web.users.id) */
     @Column(name = "user_id", nullable = false)
     private Long userId;
 
@@ -40,8 +41,9 @@ public class Attendance {
     private LocalDate workDate;
 
     // --- 출근 정보 ---
-    @Column(name = "check_in_at")
-    private LocalDateTime checkInAt;
+    // 컬럼 타입이 timestamptz가 되도록 columnDefinition을 권장(기존 DB는 수동 변경 필요)
+    @Column(name = "check_in_at"/*, columnDefinition = "timestamp with time zone"*/)
+    private OffsetDateTime checkInAt;
 
     @Column(name = "check_in_lat")
     private Double checkInLat;
@@ -53,8 +55,8 @@ public class Attendance {
     private Boolean checkInInsideFence;
 
     // --- 퇴근 정보 ---
-    @Column(name = "check_out_at")
-    private LocalDateTime checkOutAt;
+    @Column(name = "check_out_at"/*, columnDefinition = "timestamp with time zone"*/)
+    private OffsetDateTime checkOutAt;
 
     @Column(name = "check_out_lat")
     private Double checkOutLat;
@@ -68,22 +70,23 @@ public class Attendance {
     @Column(name = "note", length = 200)
     private String note;
 
-    @Column(name = "created_at")
-    private LocalDateTime createdAt; // DB default now() 있지만, 앱에서도 보강
+    // 앱/DB 모두에서 안전하게 기록되도록 created/updated도 OffsetDateTime 사용
+    @Column(name = "created_at"/*, columnDefinition = "timestamp with time zone"*/)
+    private OffsetDateTime createdAt;
 
-    @Column(name = "updated_at")
-    private LocalDateTime updatedAt;
+    @Column(name = "updated_at"/*, columnDefinition = "timestamp with time zone"*/)
+    private OffsetDateTime updatedAt;
 
     // --- 자동 타임스탬프 (KST) ---
     @PrePersist
     public void prePersist() {
-        LocalDateTime now = LocalDateTime.now(ZoneId.of("Asia/Seoul"));
+        OffsetDateTime now = OffsetDateTime.now(KST);
         if (createdAt == null) createdAt = now;
         if (updatedAt == null) updatedAt = now;
     }
 
     @PreUpdate
     public void preUpdate() {
-        updatedAt = LocalDateTime.now(ZoneId.of("Asia/Seoul"));
+        updatedAt = OffsetDateTime.now(KST);
     }
 }

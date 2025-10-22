@@ -1,4 +1,3 @@
-// src/main/java/com/che/bongpyung/service/AttendanceService.java
 package com.che.bongpyung.service;
 
 import com.che.bongpyung.domain.Attendance;
@@ -25,7 +24,7 @@ public class AttendanceService {
 
     // ===== 시간 유틸(KST) =====
     private LocalDate todayKst() { return LocalDate.now(KST); }
-    private LocalDateTime nowKst() { return LocalDateTime.now(KST); }
+    private OffsetDateTime nowKst() { return OffsetDateTime.now(KST); }
 
     // ===== 지오펜스/거리 =====
     private OfficeSite activeSiteOrThrow() {
@@ -55,16 +54,15 @@ public class AttendanceService {
     /** 출근: 오늘 행을 INSERT (이미 있으면 예외) */
     @Transactional
     public Attendance checkIn(User user, double lat, double lng) {
-        var site = activeSiteOrThrow();
+        OfficeSite site = activeSiteOrThrow();
         assertInsideFence(lat, lng, site, "출근");
 
-        var workDate = todayKst();
-        // 이미 출근했는지 사전 체크(낙관적)
+        LocalDate workDate = todayKst();
         attendanceRepository.findByUserIdAndWorkDate(user.getId(), workDate)
                 .ifPresent(a -> { throw new IllegalStateException("이미 출근 기록이 있습니다."); });
 
-        var now = nowKst();
-        var a = new Attendance();
+        OffsetDateTime now = nowKst();
+        Attendance a = new Attendance();
         a.setUserId(user.getId());
         a.setWorkDate(workDate);
         a.setCheckInAt(now);
@@ -77,7 +75,6 @@ public class AttendanceService {
         try {
             return attendanceRepository.save(a);
         } catch (DataIntegrityViolationException e) {
-            // 동시 클릭 등으로 UNIQUE(user_id, work_date) 충돌 시 사용자 친화 메시지
             throw new IllegalStateException("이미 출근 처리되었습니다. 잠시 후 새로고침 해주세요.", e);
         }
     }
@@ -85,15 +82,11 @@ public class AttendanceService {
     /** 퇴근: 오늘 행 UPDATE (없으면 예외, 이미 퇴근했으면 예외) */
     @Transactional
     public Attendance checkOut(User user, double lat, double lng) {
-        var site = activeSiteOrThrow();
-
-        // ✅ 파라미터 이름 지정 문법 제거
+        OfficeSite site = activeSiteOrThrow();
         assertInsideFence(lat, lng, site, "퇴근");
 
         LocalDate workDate = todayKst();
-
-        // ✅ 명시 타입으로 받기 (레포지토리 제네릭이 올바르면 var도 OK지만, 안전하게)
-        Attendance a = (Attendance) attendanceRepository
+        Attendance a = attendanceRepository
                 .findByUserIdAndWorkDate(user.getId(), workDate)
                 .orElseThrow(() -> new IllegalStateException("출근 기록이 없습니다."));
 
@@ -101,7 +94,7 @@ public class AttendanceService {
             throw new IllegalStateException("이미 퇴근 처리되었습니다.");
         }
 
-        LocalDateTime now = nowKst();
+        OffsetDateTime now = nowKst();
         a.setCheckOutAt(now);
         a.setCheckOutLat(lat);
         a.setCheckOutLng(lng);
@@ -112,12 +105,10 @@ public class AttendanceService {
     }
 
     // ===== 조회 헬퍼(선택) =====
-
-    /** 오늘 내 상태 빠르게 조회(버튼 활성화 판단 등) */
     @Transactional(readOnly = true)
     public Status todayStatus(User user) {
-        var workDate = todayKst();
-        Attendance a = (Attendance) attendanceRepository.findByUserIdAndWorkDate(user.getId(), workDate).orElse(null);
+        LocalDate workDate = todayKst();
+        Attendance a = attendanceRepository.findByUserIdAndWorkDate(user.getId(), workDate).orElse(null);
         if (a == null) return Status.NOT_CHECKED_IN;
         if (a.getCheckOutAt() == null) return Status.WORKING;
         return Status.CHECKED_OUT;

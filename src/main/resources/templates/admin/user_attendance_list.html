@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <link rel="stylesheet" th:href="@{/css/app.css}"/>
+    <title>출근현황</title>
+</head>
+<body class="container">
+<div class="header">
+    <div class="header__row">
+        <div class="header__brand">출근현황</div>
+        <a class="header__link" href="/logout">로그아웃</a>
+    </div>
+</div>
+
+<div class="card">
+    <form id="searchForm" class="form-grid">
+        <div>
+            <label>시작일</label>
+            <input type="date" id="startDate" class="input"/>
+        </div>
+        <div>
+            <label>종료일</label>
+            <input type="date" id="endDate" class="input"/>
+        </div>
+        <div class="full form-actions">
+            <button type="button" class="btn btn--primary btn--sm" id="btnSearch">검색</button>
+        </div>
+    </form>
+</div>
+
+<div class="card">
+    <table class="table">
+        <thead>
+        <tr>
+            <th>이름</th><th>아이디</th><th>출근일수</th><th>근무시간</th><th>작업</th>
+        </tr>
+        </thead>
+        <tbody id="tbody"></tbody>
+    </table>
+</div>
+
+<script>
+    const tbody = document.getElementById('tbody');
+
+    function renderRows(rows){
+        tbody.innerHTML = '';
+        for(const r of rows){
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+      <td data-th="이름">${r.displayName}</td>
+      <td data-th="아이디">${r.userId}</td>
+      <td data-th="출근일수">${r.totalDays}</td>
+      <td data-th="근무시간">${r.totalWorkTime}</td>
+      <td data-th="작업">
+        <button class="btn btn--sm btn--primary" onclick="location.href='/admin/attendance_detail?userId=${r.id}'">상세</button>
+      </td>
+    `;
+            tbody.appendChild(tr);
+        }
+    }
+
+    document.getElementById('btnSearch').addEventListener('click', async ()=>{
+        const start = document.getElementById('startDate').value;
+        const end = document.getElementById('endDate').value;
+        const res = await fetch(`/api/admin/users?startDate=${start}&endDate=${end}`);
+        const data = await res.json();
+        if(data.ok) renderRows(data.rows);
+    });
+
+    window.addEventListener('DOMContentLoaded', ()=>{
+        const now = new Date().toISOString().slice(0,10);
+        document.getElementById('startDate').value = now;
+        document.getElementById('endDate').value = now;
+        document.getElementById('btnSearch').click();
+    });
+</script>
+</body>
+</html>

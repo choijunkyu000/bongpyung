@@ -11,6 +11,7 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
+import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -121,6 +122,95 @@ public class AdminUserController {
         response.put("attendance", resultAtt);
 
         return response;
+    }
+
+
+    /**
+     * ✅ 유저별 출근 요약 리스트
+     */
+    @GetMapping("/api/attendance/summary")
+    @ResponseBody
+    public Map<String, Object> listAttendanceSummary(
+            @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+            @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate
+    ) {
+        LocalDate start = (startDate != null) ? startDate : LocalDate.now();
+        LocalDate end = (endDate != null) ? endDate : LocalDate.now();
+
+        List<User> users = userRepo.findAll();
+        List<Map<String, Object>> rows = new ArrayList<>();
+
+        for (User u : users) {
+            List<Attendance> attList = (List<Attendance>) attendanceRepo.findByUserIdAndWorkDateBetween(u.getId(), start, end);
+
+            long totalDays = attList.stream().filter(a -> a.getCheckInAt() != null).count();
+            long totalMinutes = attList.stream()
+                    .filter(a -> a.getCheckInAt() != null && a.getCheckOutAt() != null)
+                    .mapToLong(a -> ChronoUnit.MINUTES.between(a.getCheckInAt(), a.getCheckOutAt()))
+                    .sum();
+
+            long hours = totalMinutes / 60;
+            long minutes = totalMinutes % 60;
+
+            Map<String, Object> row = new HashMap<>();
+            row.put("id", u.getId());
+            row.put("userId", u.getUserId());
+            row.put("displayName", u.getDisplayName());
+            row.put("role", u.getRole() != null ? u.getRole().name() : "-");
+            row.put("useYn", u.isUseYn());
+            row.put("totalDays", totalDays);
+            row.put("totalWorkTime", String.format("%02d:%02d", hours, minutes));
+            rows.add(row);
+        }
+
+        Map<String, Object> res = new HashMap<>();
+        res.put("ok", true);
+        res.put("rows", rows);
+        return res;
+    }
+
+    /**
+     * ✅ 특정 유저 상세 출퇴근 내역
+     */
+    @GetMapping("/api/attendance/users/{userId}")
+    @ResponseBody
+    public Map<String, Object> userAttendanceDetail(
+            @PathVariable Long userId,
+            @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+            @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate
+    ) {
+        LocalDate start = (startDate != null) ? startDate : LocalDate.now().withDayOfMonth(1);
+        LocalDate end = (endDate != null) ? endDate : LocalDate.now();
+
+        List<Attendance> list = attendanceRepo.findByUserIdAndWorkDateBetween(userId, start, end)
+                .stream()
+                .sorted(Comparator.comparing(Attendance::getWorkDate))
+                .collect(Collectors.toList());
+
+        List<Map<String, Object>> rows = new ArrayList<>();
+        for (Attendance a : list) {
+            Map<String, Object> r = new HashMap<>();
+            r.put("workDate", a.getWorkDate());
+            r.put("checkInAt", a.getCheckInAt());
+            r.put("checkOutAt", a.getCheckOutAt());
+
+            String workTime = "-";
+            if (a.getCheckInAt() != null && a.getCheckOutAt() != null) {
+                long minutes = ChronoUnit.MINUTES.between(a.getCheckInAt(), a.getCheckOutAt());
+                workTime = String.format("%02d:%02d", minutes / 60, minutes % 60);
+            }
+            r.put("workTime", workTime);
+            rows.add(r);
+        }
+
+        Map<String, Object> res = new HashMap<>();
+        res.put("ok", true);
+        res.put("rows", rows);
+        return res;
     }
 
 }

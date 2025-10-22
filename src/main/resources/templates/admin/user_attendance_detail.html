@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <link rel="stylesheet" th:href="@{/css/app.css}"/>
+    <title>출근 상세</title>
+</head>
+<body class="container">
+<div class="header">
+    <div class="header__row">
+        <div class="header__brand">출근 상세</div>
+        <a class="header__link" href="/attendance/list">← 목록</a>
+    </div>
+</div>
+
+<div class="card">
+    <form id="searchForm" class="form-grid">
+        <div>
+            <label>시작일</label>
+            <input type="date" id="startDate" class="input"/>
+        </div>
+        <div>
+            <label>종료일</label>
+            <input type="date" id="endDate" class="input"/>
+        </div>
+        <div class="full form-actions">
+            <button type="button" class="btn btn--primary btn--sm" id="btnSearch">검색</button>
+        </div>
+    </form>
+</div>
+
+<div class="card">
+    <table class="table">
+        <thead>
+        <tr><th>날짜</th><th>출근시각</th><th>퇴근시각</th><th>근무시간</th></tr>
+        </thead>
+        <tbody id="tbody"></tbody>
+    </table>
+</div>
+
+<script>
+    const tbody = document.getElementById('tbody');
+    const params = new URLSearchParams(location.search);
+    const userId = params.get('userId');
+
+    function renderRows(rows){
+        tbody.innerHTML = '';
+        for(const r of rows){
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+      <td data-th="날짜">${r.workDate}</td>
+      <td data-th="출근시각">${r.checkInAt ? formatTime(r.checkInAt) : '-'}</td>
+      <td data-th="퇴근시각">${r.checkOutAt ? formatTime(r.checkOutAt) : '-'}</td>
+      <td data-th="근무시간">${r.workTime}</td>
+    `;
+            tbody.appendChild(tr);
+        }
+    }
+
+    function formatTime(dt){
+        const d = new Date(dt);
+        const y = d.getFullYear(), M = d.getMonth()+1, D = d.getDate();
+        const h = d.getHours().toString().padStart(2,'0');
+        const m = d.getMinutes().toString().padStart(2,'0');
+        const s = d.getSeconds().toString().padStart(2,'0');
+        return `${y}-${String(M).padStart(2,'0')}-${String(D).padStart(2,'0')} ${h}:${m}:${s}`;
+    }
+
+    document.getElementById('btnSearch').addEventListener('click', async ()=>{
+        const start = document.getElementById('startDate').value;
+        const end = document.getElementById('endDate').value;
+        const res = await fetch(`/api/attendance/users/${userId}?startDate=${start}&endDate=${end}`);
+        const data = await res.json();
+        if(data.ok) renderRows(data.rows);
+    });
+
+    window.addEventListener('DOMContentLoaded', ()=>{
+        const now = new Date();
+        const start = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0,10);
+        const end = new Date(now.getFullYear(), now.getMonth()+1, 0).toISOString().slice(0,10);
+        document.getElementById('startDate').value = start;
+        document.getElementById('endDate').value = end;
+        document.getElementById('btnSearch').click();
+    });
+</script>
+</body>
+</html>

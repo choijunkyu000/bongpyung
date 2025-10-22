@@ -50,4 +50,14 @@ public class AuthController {
     public String adminUserDetail() {
         return "admin/user_detail"; // templates/admin/users.html
     }
+
+    @GetMapping("/admin/attendance_list")
+    public String adminUserAttendanceList() {
+        return "admin/user_attendance_list"; // templates/admin/users.html
+    }
+
+    @GetMapping("/admin/attendance_detail")
+    public String adminUserAttendanceDetail() {
+        return "admin/user_attendance_detail"; // templates/admin/users.html
+    }
 }
