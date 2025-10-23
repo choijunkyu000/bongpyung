@@ -23,7 +23,25 @@
             .then(r => r.ok ? r.json() : {active:true})
             .then(d => { if (d && d.active === false) location.href = '/login?expired'; })
             .catch(() => {});
+
+        // 날짜 포맷 함수 (옵션에 따라 시:분:초 포함)
+        function formatDate(str, includeTime = false) {
+            try {
+                const d = new Date(str);
+                const pad = n => n.toString().padStart(2, '0');
+                const datePart = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+                if (!includeTime) return datePart;
+
+                const timePart = `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+                return `${datePart} ${timePart}`;
+            } catch {
+                return str;
+            }
+        }
+
     </script>
+
+
 </header>
 </body>
 </html>

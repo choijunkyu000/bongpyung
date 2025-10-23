@@ -70,7 +70,6 @@
     const tbodyAtt = document.getElementById('tbody-att');
     const msg     = document.getElementById('msg');
 
-    // 기본 날짜 = 오늘
     const today = new Date().toISOString().split('T')[0];
     fDate.value = today;
 
@@ -85,14 +84,30 @@
         return r.json();
     }
 
+    // ✅ 날짜 + 시간 포맷 (YYYY-MM-DD HH:mm:ss)
+    function formatDate(str, includeTime = false) {
+        if (!str) return '-'; // null / undefined 방어
+        try {
+            const d = new Date(str);
+            const pad = n => n.toString().padStart(2, '0');
+            const datePart = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+            if (!includeTime) return datePart;
+            const timePart = `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+            return `${datePart} ${timePart}`;
+        } catch {
+            return '-';
+        }
+    }
+
+    // ✅ 출근/퇴근 없으면 "-" 처리
     function setAttendanceRow(date, inAt, outAt){
         tbodyAtt.innerHTML = '';
         const tr = document.createElement('tr');
         tr.innerHTML = `
-      <td data-th="날짜">${date || '-'}</td>
-      <td data-th="출근">${inAt || '-'}</td>
-      <td data-th="퇴근">${outAt || '-'}</td>
-    `;
+            <td data-th="날짜">${date || '-'}</td>
+            <td data-th="출근">${inAt ? formatDate(inAt, true) : '-'}</td>
+            <td data-th="퇴근">${outAt ? formatDate(outAt, true) : '-'}</td>
+        `;
         tbodyAtt.appendChild(tr);
     }
 
@@ -140,6 +155,7 @@
     // 최초 로드
     loadDetail();
 </script>
+
 
 </body>
 </html>

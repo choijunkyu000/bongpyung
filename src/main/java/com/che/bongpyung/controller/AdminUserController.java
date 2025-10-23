@@ -5,6 +5,7 @@ import com.che.bongpyung.domain.User;
 import com.che.bongpyung.persitence.AttendanceRepository;
 import com.che.bongpyung.persitence.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -33,14 +34,11 @@ public class AdminUserController {
         return "admin/user_list";
     }
 
-    @GetMapping("/users/{id}")
+    @GetMapping("/user_detail/{id}")
     public String userDetailPage(@PathVariable Long id, Model model) {
-        // 템플릿: admin/user_detail.html (프론트가 /admin/api/users/{id} 호출)
         model.addAttribute("userId", id);
-        return "admin/user_detail";
+        return "admin/user_detail"; // -> templates/admin/user_detail.html
     }
-
-    // ==== APIs (조회만; 생성/수정/삭제/리셋은 기존 API 사용) ====
 
     /** 목록 조회 + 검색 + 선택일 근태 합쳐서 내려주기 */
     @ResponseBody
@@ -48,47 +46,40 @@ public class AdminUserController {
     public Map<String, Object> listUsers(
             @RequestParam(required = false) String userId,
             @RequestParam(required = false) String displayName,
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date // 사용 안 해도 OK
     ) {
-        LocalDate targetDate = (date != null) ? date : LocalDate.now();
-
-        // --- 기본 유저 목록 필터링 (DB 전체 조회 후 필터)
+        // 1) 사용자 조회 + 간단 필터
         List<User> users = userRepo.findAll().stream()
                 .filter(u -> userId == null || userId.isBlank() || u.getUserId().toLowerCase().contains(userId.toLowerCase()))
-                .filter(u -> displayName == null || displayName.isBlank() ||
-                        (u.getDisplayName() != null && u.getDisplayName().contains(displayName)))
+                .filter(u -> displayName == null || displayName.isBlank()
+                        || (u.getDisplayName() != null && u.getDisplayName().contains(displayName)))
                 .sorted(Comparator.comparing(User::getId))
                 .collect(Collectors.toList());
 
-        // --- Attendance 조건 조회 (date 조건이 있을 때만)
-        Map<Long, Attendance> attMap = new HashMap<>();
-        if (targetDate != null) {
-            List<Long> ids = users.stream().map(User::getId).toList();
-            List<Attendance> atts = (List<Attendance>) attendanceRepo.findByUserIdInAndWorkDate(ids, targetDate);
-            for (Attendance a : atts) {
-                attMap.put(a.getUserId(), a);
-            }
-        }
-
-        // --- 응답 변환
-        DateTimeFormatter df = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+        // 2) 각 사용자별 최신 출퇴근 1건 조회
         List<Map<String, Object>> rows = new ArrayList<>();
         for (User u : users) {
-            Attendance a = attMap.get(u.getId());
-            Map<String, Object> map = new HashMap<>();
-            map.put("id", u.getId());
-            map.put("userId", u.getUserId());
-            map.put("displayName", u.getDisplayName());
-            map.put("role", u.getRole().name());
-            map.put("useYn", u.isUseYn());
-            map.put("lastCheckIn", a != null && a.getCheckInAt() != null ? a.getCheckInAt().format(df) : null);
-            map.put("lastCheckOut", a != null && a.getCheckOutAt() != null ? a.getCheckOutAt().format(df) : null);
-            map.put("createdAt", u.getCreatedAt() != null ? u.getCreatedAt().format(DateTimeFormatter.ofPattern("yyyy-MM-dd")) : null);
-            map.put("updatedAt", u.getUpdatedAt() != null ? u.getUpdatedAt().format(DateTimeFormatter.ofPattern("yyyy-MM-dd")) : null);
-            rows.add(map);
+            Optional<Attendance> recentOpt = attendanceRepo.findFirstByUserIdOrderByWorkDateDescCheckInAtDesc(u.getId());
+            Attendance recent = recentOpt.orElse(null);
+
+            Map<String, Object> row = new LinkedHashMap<>();
+            row.put("id", u.getId());
+            row.put("userId", u.getUserId());
+            row.put("displayName", u.getDisplayName());
+            row.put("role", u.getRole().name());
+            row.put("useYn", u.isUseYn());
+            row.put("createdAt", u.getCreatedAt()); // 프론트에서 yyyy-MM-dd 포맷
+            row.put("updatedAt", u.getUpdatedAt());
+            row.put("lastCheckIn", (recent != null) ? recent.getCheckInAt() : null);
+            row.put("lastCheckOut", (recent != null) ? recent.getCheckOutAt() : null);
+
+            rows.add(row);
         }
 
-        return Map.of("ok", true, "rows", rows);
+        Map<String, Object> res = new LinkedHashMap<>();
+        res.put("ok", true);
+        res.put("rows", rows);
+        return res;
     }
 
     /** 상세 조회 + 선택일 근태 */

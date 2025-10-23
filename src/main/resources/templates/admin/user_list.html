@@ -25,12 +25,6 @@
             <label for="searchDisplayName">이름</label>
             <input id="searchDisplayName" class="input" type="text" placeholder="display_name으로 검색" />
         </div>
-        <!--
-        <div>
-            <label for="searchDate">날짜</label>
-            <input id="searchDate" class="input" type="date" />
-        </div>
-        -->
         <div class="form-actions">
             <button id="btnSearch" class="btn btn--primary">검색</button>
         </div>
@@ -47,8 +41,8 @@
             <th>활성</th>
             <th>최근 출근</th>
             <th>최근 퇴근</th>
-            <th>생성일</th> <!-- ✅ 추가 -->
-            <th>수정일</th> <!-- ✅ 추가 -->
+            <th>생성일</th>
+            <th>수정일</th>
             <th>작업</th>
         </tr>
         </thead>
@@ -59,20 +53,14 @@
 <script>
     const userIdInput = document.getElementById('searchUserId');
     const nameInput = document.getElementById('searchDisplayName');
-    //const dateInput = document.getElementById('searchDate');
     const btnSearch = document.getElementById('btnSearch');
-
-    // 기본 날짜를 오늘로 설정
-    const now = new Date();
-    //dateInput.value = now.toISOString().substring(0, 10);
 
     btnSearch.addEventListener('click', loadUsers);
 
     async function loadUsers() {
         const params = new URLSearchParams({
-            userId: userIdInput.value.trim()
-            ,displayName: nameInput.value.trim()
-            //,date: dateInput.value
+            userId: userIdInput.value.trim(),
+            displayName: nameInput.value.trim()
         });
         const r = await fetch('/admin/api/users/list?' + params.toString());
         const data = await r.json();
@@ -91,13 +79,27 @@
             tr.appendChild(cell('아이디', row.userId ?? ''));
             tr.appendChild(cell('역할', row.role ?? ''));
             tr.appendChild(cell('활성', row.useYn ? '활성' : '비활성'));
-            tr.appendChild(cell('최근 출근', row.lastCheckIn ? formatDateTime(row.lastCheckIn) : '-'));
-            tr.appendChild(cell('최근 퇴근', row.lastCheckOut ? formatDateTime(row.lastCheckOut) : '-'));
-            tr.appendChild(cell('생성일', row.createdAt ?? '-')); // ✅ 추가
-            tr.appendChild(cell('수정일', row.updatedAt ?? '-')); // ✅ 추가
-            tr.appendChild(cell('작업', `<button data-id="${row.id}" class="btn btn--sm btn--primary">수정</button>`));
+            tr.appendChild(cell('최근 출근', row.lastCheckIn ? formatDateTime(row.lastCheckIn,false) : '-'));
+            tr.appendChild(cell('최근 퇴근', row.lastCheckOut ? formatDateTime(row.lastCheckOut,false) : '-'));
+            tr.appendChild(cell('생성일', row.createdAt ? formatDate(row.createdAt,false) : '-'));
+            tr.appendChild(cell('수정일', row.updatedAt ? formatDate(row.updatedAt,false) : '-'));
+
+            // ✅ 수정 버튼 → 상세 페이지로 이동
+            const btnHtml = `<button data-id="${row.id}" class="btn btn--sm btn--primary btn-edit">수정</button>`;
+            tr.appendChild(cell('작업', btnHtml));
+
             tbody.appendChild(tr);
         }
+
+        // ✅ 버튼 클릭 이벤트 바인딩
+        document.querySelectorAll('.btn-edit').forEach(btn => {
+            btn.addEventListener('click', e => {
+                const userId = e.target.dataset.id;
+                if (userId) {
+                    window.location.href = `/admin/user_detail/${userId}`;
+                }
+            });
+        });
     }
 
     function cell(label, value) {
@@ -107,7 +109,7 @@
         return td;
     }
 
-    // yyyy-MM-dd HH:mm:ss → 한국시간 포맷 함수
+    // yyyy-MM-dd HH:mm:ss 포맷
     function formatDateTime(str) {
         try {
             const d = new Date(str);
@@ -117,6 +119,7 @@
             return str;
         }
     }
+
 
     document.addEventListener('DOMContentLoaded', loadUsers);
 </script>
