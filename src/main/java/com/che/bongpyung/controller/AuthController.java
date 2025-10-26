@@ -5,8 +5,10 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
 
 @Controller
+@RequestMapping("/auth") // ✅ 인증 관련 URL만 담당하도록 prefix
 public class AuthController {
 
     @GetMapping("/login")
@@ -14,55 +16,42 @@ public class AuthController {
         return "login";
     }
 
-    @GetMapping({"/", "/home"})
-    public String home(Authentication auth) {
-        // 인증 안 된 경우 로그인 페이지로
-        if (auth == null || !auth.isAuthenticated()) {
-            return "redirect:/login";
-        }
-        // 관리자면 관리자 대시보드로
-        boolean isAdmin = auth.getAuthorities().stream()
-                .map(GrantedAuthority::getAuthority)
-                .anyMatch("ROLE_ADMIN"::equals);
-        if (isAdmin) {
-            return "redirect:/admin";
-        }
-        // 일반 유저는 기존 홈
-        return "home";
-    }
+    // ✅ 충돌 원인 제거: "/", "/home" 매핑 삭제
+    // @GetMapping({"/", "/home"})
+    // public String home(Authentication auth) { ... }
 
     @GetMapping("/admin/dashboard")
     public String adminHome() {
-        return "admin/dashboard"; // templates/admin/dashboard.html
+        return "admin/dashboard";
     }
 
     @GetMapping("/admin/attendance")
     public String adminAttendance() {
-        return "admin/attendance"; // templates/admin/attendance.html
+        return "admin/attendance";
     }
 
     @GetMapping("/admin/user_list")
     public String adminuserList() {
-        return "admin/user_list"; // templates/admin/users.html
+        return "admin/user_list";
     }
 
     @GetMapping("/admin/user_detail")
     public String adminUserDetail() {
-        return "admin/user_detail"; // templates/admin/users.html
+        return "admin/user_detail";
     }
 
     @GetMapping("/admin/attendance_list")
     public String adminUserAttendanceList() {
-        return "admin/user_attendance_list"; // templates/admin/users.html
+        return "admin/user_attendance_list";
     }
 
     @GetMapping("/admin/attendance_detail")
     public String adminUserAttendanceDetail() {
-        return "admin/user_attendance_detail"; // templates/admin/users.html
+        return "admin/user_attendance_detail";
     }
 
     @GetMapping("/admin/users/new")
     public String viewCreateUserPage() {
-        return "admin/user"; // 위에서 만든 템플릿
+        return "admin/user";
     }
 }

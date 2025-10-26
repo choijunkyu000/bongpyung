@@ -1,17 +1,18 @@
+// src/main/java/com/che/bongpyung/controller/HomeController.java
 package com.che.bongpyung.controller;
 
 import com.che.bongpyung.domain.OfficeSite;
-import com.che.bongpyung.domain.User; // ✅ 우리의 도메인 User
+import com.che.bongpyung.domain.User;
 import com.che.bongpyung.persitence.OfficeSiteRepository;
 import com.che.bongpyung.persitence.UserRepository;
 import com.che.bongpyung.service.AttendanceService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 
-import java.time.LocalDateTime;
 import java.util.Map;
 
 @Controller
@@ -22,17 +23,25 @@ public class HomeController {
     private final UserRepository userRepo;
     private final AttendanceService attendanceService;
 
-    // 테스트용 메인 (모바일 최적화)
     @GetMapping("/")
     public String home(Model model, Authentication auth) {
+        // ✅ 비로그인 → 로그인 페이지로
+        if (auth == null || !auth.isAuthenticated()) {
+            return "redirect:/auth/login";
+        }
+        // ✅ 관리자면 관리자 대시보드로
+        boolean isAdmin = auth.getAuthorities().stream()
+                .map(GrantedAuthority::getAuthority)
+                .anyMatch("ROLE_ADMIN"::equals);
+        if (isAdmin) {
+            return "redirect:/auth/admin/dashboard";
+        }
+
         OfficeSite site = siteRepo.findFirstByActiveTrue().orElse(null);
-        model.addAttribute("site", site); // 없을 수도 있으니 null 허용
-        // 필요 시 로그인 사용자 정보도 내려주려면 아래 주석 해제
-        // if (auth != null) model.addAttribute("username", auth.getName());
+        model.addAttribute("site", site);
         return "home";
     }
 
-    // 활성 사이트 좌표 조회 (JS에서 사용)
     @GetMapping("/api/site/active")
     @ResponseBody
     public Map<String, Object> activeSite() {
@@ -47,7 +56,6 @@ public class HomeController {
                         "message", "활성화된 근무지가 없습니다."));
     }
 
-    // 출근
     @PostMapping("/api/attendance/check-in")
     @ResponseBody
     public Map<String, Object> checkIn(@RequestParam double lat,
@@ -68,7 +76,6 @@ public class HomeController {
         }
     }
 
-    // 퇴근
     @PostMapping("/api/attendance/check-out")
     @ResponseBody
     public Map<String, Object> checkOut(@RequestParam double lat,
