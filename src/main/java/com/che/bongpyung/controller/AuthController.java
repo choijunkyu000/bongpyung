@@ -8,7 +8,6 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 
 @Controller
-@RequestMapping("/auth") // ✅ 인증 관련 URL만 담당하도록 prefix
 public class AuthController {
 
     @GetMapping("/login")
