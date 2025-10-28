@@ -23,25 +23,27 @@ public class HomeController {
     private final UserRepository userRepo;
     private final AttendanceService attendanceService;
 
-    @GetMapping("/")
+    // 루트와 /home 모두 처리
+    @GetMapping({"/", "/home"})
     public String home(Model model, Authentication auth) {
-        // ✅ 비로그인 → 로그인 페이지로
+        // 비로그인 → 로그인 페이지로
         if (auth == null || !auth.isAuthenticated()) {
-            return "redirect:/auth/login";
+            return "redirect:/login"; // SecurityConfig와 일치
         }
-        // ✅ 관리자면 관리자 대시보드로
+        // 관리자면 관리자 대시보드로
         boolean isAdmin = auth.getAuthorities().stream()
                 .map(GrantedAuthority::getAuthority)
                 .anyMatch("ROLE_ADMIN"::equals);
         if (isAdmin) {
-            return "redirect:/auth/admin/dashboard";
+            return "redirect:/admin/dashboard"; // SecurityConfig와 일치
         }
 
         OfficeSite site = siteRepo.findFirstByActiveTrue().orElse(null);
         model.addAttribute("site", site);
-        return "home";
+        return "home"; // templates/home.html
     }
 
+    // 활성 사이트 좌표 조회 (JS에서 사용)
     @GetMapping("/api/site/active")
     @ResponseBody
     public Map<String, Object> activeSite() {
@@ -56,6 +58,7 @@ public class HomeController {
                         "message", "활성화된 근무지가 없습니다."));
     }
 
+    // 출근
     @PostMapping("/api/attendance/check-in")
     @ResponseBody
     public Map<String, Object> checkIn(@RequestParam double lat,
@@ -76,6 +79,7 @@ public class HomeController {
         }
     }
 
+    // 퇴근
     @PostMapping("/api/attendance/check-out")
     @ResponseBody
     public Map<String, Object> checkOut(@RequestParam double lat,
