@@ -28,6 +28,10 @@ public class Attendance {
 
     private static final ZoneId KST = ZoneId.of("Asia/Seoul");
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id", insertable = false, updatable = false)
+    private User user;
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
