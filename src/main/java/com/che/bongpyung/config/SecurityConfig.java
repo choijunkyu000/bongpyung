@@ -9,7 +9,6 @@ import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.util.matcher.RegexRequestMatcher;
-// ↑ org.springframework.security.web.util.matcher.RequestMatcher 구현체
 
 @Configuration
 @RequiredArgsConstructor
@@ -21,8 +20,6 @@ public class SecurityConfig {
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
-
-        // GET /logout 허용용 매처 (정규식은 ^…$ 로 고정 매칭)
         var logoutGetMatcher = new RegexRequestMatcher("^/logout$", "GET");
 
         http
@@ -30,44 +27,32 @@ public class SecurityConfig {
                         .maximumSessions(1)
                         .maxSessionsPreventsLogin(false)
                         .expiredUrl("/login?expired")
-                        .expiredSessionStrategy(new CustomSessionExpiredStrategy())
-                )
+                        .expiredSessionStrategy(new CustomSessionExpiredStrategy()))
                 .sessionManagement(sm -> sm.invalidSessionUrl("/login?invalid"))
 
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers(
-                                "/login", "/error",
-                                "/css/**", "/js/**", "/images/**", "/webjars/**", "/favicon.ico"
-                        ).permitAll()
+                        .requestMatchers("/login", "/error",
+                                "/css/**", "/js/**", "/images/**", "/webjars/**", "/favicon.ico").permitAll()
                         .requestMatchers("/admin/**").hasRole("ADMIN")
                         .requestMatchers("/", "/home", "/inout/**").authenticated()
-                        .anyRequest().authenticated()
-                )
+                        .anyRequest().authenticated())
 
                 .formLogin(form -> form
                         .loginPage("/login")
                         .loginProcessingUrl("/login")
-                        .usernameParameter("userId")     // ★ 폼 name과 일치시킴
+                        .usernameParameter("userId")
                         .passwordParameter("password")
-                        .successHandler(customLoginSuccessHandler) // 쓰는 중이면 유지
-                        //.defaultSuccessUrl("/home", true)
+                        .successHandler(customLoginSuccessHandler)
                         .failureUrl("/login?error=true")
-                        .permitAll()
-                )
+                        .permitAll())
 
-                // API만 CSRF 예외
                 .csrf(csrf -> csrf.ignoringRequestMatchers("/api/**", "/admin/api/**"))
-
-                // ★ GET /logout 허용 (주소창/링크로 접근 가능)
                 .logout(l -> l
-                        .logoutRequestMatcher(logoutGetMatcher)   // GET /logout 허용
-                        // .logoutUrl("/logout")                   // (선택) POST도 함께 허용하고 싶으면 추가
+                        .logoutRequestMatcher(logoutGetMatcher)
                         .logoutSuccessUrl("/login?logout")
                         .invalidateHttpSession(true)
                         .deleteCookies("JSESSIONID")
-                        .permitAll()
-                )
-
+                        .permitAll())
                 .authenticationProvider(authenticationProvider);
 
         return http.build();

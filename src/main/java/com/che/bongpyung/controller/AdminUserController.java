@@ -54,7 +54,7 @@ public class AdminUserController {
                 .filter(u -> displayName == null || displayName.isBlank()
                         || (u.getDisplayName() != null && u.getDisplayName().contains(displayName)))
                 .sorted(Comparator.comparing(User::getId))
-                .collect(Collectors.toList());
+                .toList();
 
         // 2) 각 사용자별 최신 출퇴근 1건 조회
         List<Map<String, Object>> rows = new ArrayList<>();
@@ -136,7 +136,12 @@ public class AdminUserController {
         LocalDate start = (startDate != null) ? startDate : LocalDate.now();
         LocalDate end = (endDate != null) ? endDate : LocalDate.now();
 
-        List<User> users = userRepo.findAll();
+        // ✅ 1. 관리자 제외, 비활성 사용자 제외
+        List<User> users = userRepo.findAll().stream()
+                .filter(User::isUseYn)                               // 활성 사용자만
+                .filter(u -> !"ADMIN".equalsIgnoreCase(u.getRole().name())) // 관리자 제외
+                .toList();
+
         List<Map<String, Object>> rows = new ArrayList<>();
 
         for (User u : users) {
@@ -171,7 +176,7 @@ public class AdminUserController {
     /**
      * ✅ 특정 유저 상세 출퇴근 내역
      */
-    @GetMapping("/api/attendance/users/{userId}")
+    @GetMapping("/api/attendance/summaryDetail/{userId}")
     @ResponseBody
     public Map<String, Object> userAttendanceDetail(
             @PathVariable Long userId,
